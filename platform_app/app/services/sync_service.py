@@ -8,6 +8,7 @@ Called by both:
   - /api/sync             (manual pull, staff-initiated)
 """
 from sqlalchemy.exc import IntegrityError
+from flask import current_app
 
 from app import db
 from app.models import Participant, SurveyResponse, GrowthCard
@@ -37,12 +38,16 @@ def process_row(raw_row: list, row_index: int) -> dict:
     if not code or survey_type not in ("pre", "post"):
         return {"status": "skipped", "reason": "missing code or invalid type"}
 
+    default_cohort = current_app.config.get("DEFAULT_COHORT")
+
     # ── Upsert participant ───────────────────────────────────────────────────
     participant = Participant.query.filter_by(code=code).first()
     if not participant:
-        participant = Participant(code=code)
+        participant = Participant(code=code, cohort=default_cohort)
         db.session.add(participant)
         db.session.flush()   # get participant.id before commit
+    elif not participant.cohort and default_cohort:
+        participant.cohort = default_cohort
 
     # ── Deduplicate by sheet row index ───────────────────────────────────────
     existing = SurveyResponse.query.filter_by(sheet_row_index=row_index).first()
@@ -51,6 +56,21 @@ def process_row(raw_row: list, row_index: int) -> dict:
 
     # ── Compute scores and persist ───────────────────────────────────────────
     totals = compute_all_totals(parsed)
+    expected_totals = {
+        "act_total": "ACT SG",
+        "cmi_total": "CMI",
+        "rsem_total": "Rosenberg",
+        "ewb_total": "Well-Being",
+    }
+    missing_scales = [label for key, label in expected_totals.items() if key not in totals]
+    if missing_scales:
+        current_app.logger.warning(
+            "Partial row %s (%s): missing items for %s",
+            row_index,
+            code,
+            ", ".join(missing_scales),
+        )
+
     parsed.update(totals)
     parsed.pop("timestamp", None)
     parsed.pop("code", None)
@@ -62,12 +82,7 @@ def process_row(raw_row: list, row_index: int) -> dict:
         **{k: v for k, v in parsed.items() if hasattr(SurveyResponse, k)},
     )
     db.session.add(response)
-    try:
-        db.session.commit()
-    except IntegrityError:
-        # Concurrent webhook retries can race; DB uniqueness is the final guardrail.
-        db.session.rollback()
-        return {"status": "skipped", "reason": "already processed", "code": code}
+    db.session.flush()
 
     # ── Generate growth card if this is the post-survey ──────────────────────
     if survey_type == "post":
@@ -82,13 +97,23 @@ def process_row(raw_row: list, row_index: int) -> dict:
             post_dict = response.to_dict()
             deltas    = compute_change_scores(pre_dict, post_dict)
 
-            card_path = generate_card(
-                participant_code=code,
-                pre=pre_dict,
-                post=post_dict,
-                deltas=deltas,
-                cohort=participant.cohort or "platform",
-            )
+            try:
+                card_path = generate_card(
+                    participant_code=code,
+                    pre=pre_dict,
+                    post=post_dict,
+                    deltas=deltas,
+                    cohort=participant.cohort or "platform",
+                )
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Card generation failed for row %s (%s)", row_index, code)
+                return {
+                    "status": "failed",
+                    "reason": "card generation failed",
+                    "code": code,
+                    "row_index": row_index,
+                }
 
             card = GrowthCard.query.filter_by(participant_id=participant.id).first()
             if card:
@@ -103,11 +128,28 @@ def process_row(raw_row: list, row_index: int) -> dict:
                     **deltas,
                 )
                 db.session.add(card)
-            db.session.commit()
+
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # Concurrent webhook retries can race; DB uniqueness is the final guardrail.
+                db.session.rollback()
+                return {"status": "skipped", "reason": "already processed", "code": code}
 
             return {"status": "card_generated", "code": code, "path": card_path}
 
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return {"status": "skipped", "reason": "already processed", "code": code}
         return {"status": "post_saved_no_pre", "code": code}
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {"status": "skipped", "reason": "already processed", "code": code}
 
     return {"status": "pre_saved", "code": code}
 

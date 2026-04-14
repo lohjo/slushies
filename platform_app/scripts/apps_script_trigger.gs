@@ -7,7 +7,9 @@
  * 3 Set WEBHOOK_URL to your public endpoint:
  *      https://<your-host>/webhook/form-submit
  *    (If running Flask locally, expose it via a tunnel first.)
- * 4 Set WEBHOOK_SECRET to exactly match your app WEBHOOK_SECRET env value
+ * 4 Set WEBHOOK_SECRET to exactly match your app WEBHOOK_SECRET env value.
+ *   DO NOT commit a real secret here — set it only in the Apps Script editor,
+ *   not in source control.
  * 5 Add trigger: Triggers → Add Trigger →
  *      Function: onFormSubmit
  *      Event source: From spreadsheet
@@ -19,8 +21,10 @@
  *   X-Webhook-Secret: <WEBHOOK_SECRET>
  */
 
-var WEBHOOK_URL    = "https://slushies-411994757215.europe-west1.run.app";
-var WEBHOOK_SECRET = "64031848b7eac25d50d56f3153acaaf995662b2202f1f123";
+var WEBHOOK_URL    = "https://<your-cloud-run-or-app-url>";
+// SECURITY: replace the placeholder below with your real secret ONLY in the
+// Apps Script editor — never commit a real secret value here.
+var WEBHOOK_SECRET = "<REPLACE_WITH_WEBHOOK_SECRET_IN_APPS_SCRIPT_EDITOR>";
 
 function onFormSubmit(e) {
   if (!e) {

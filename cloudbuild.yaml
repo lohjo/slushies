@@ -2,7 +2,7 @@ substitutions:
   _REGION: asia-southeast1
   _REPO: slushies
   _SERVICE: slushies
-  _APP_DIR: platform_app
+  _MIGRATE_JOB: slushies-migrate
 
 steps:
   # Build the container image
@@ -10,13 +10,15 @@ steps:
     id: build
     args:
       - build
+      - '-f'
+      - 'Dockerfile'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${BUILD_ID}'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest'
       - '--label=app=slushies'
       - '--label=component=backend'
-      - '${_APP_DIR}'
+      - '.'
 
   # Push to Artifact Registry (all tags)
   - name: 'gcr.io/cloud-builders/docker'
@@ -27,10 +29,23 @@ steps:
       - '--all-tags'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}'
 
+  # Run database migrations before rolling a new revision
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: migrate
+    waitFor: ['push']
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - execute
+      - ${_MIGRATE_JOB}
+      - '--region=${_REGION}'
+      - '--wait'
+
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: deploy
-    waitFor: ['push']
+    waitFor: ['migrate']
     entrypoint: gcloud
     args:
       - run

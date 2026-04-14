@@ -51,5 +51,10 @@ def form_submit():
         row_index=payload.get("row_index", 0),
     )
 
-    status_code = 200 if result["status"] not in ("skipped",) else 202
+    if result.get("status") == "failed":
+        status_code = 500
+    elif result.get("status") == "skipped":
+        status_code = 202
+    else:
+        status_code = 200
     return jsonify(result), status_code

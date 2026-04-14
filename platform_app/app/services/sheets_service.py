@@ -12,6 +12,18 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 # Column positions in the Google Sheet (0-indexed after timestamp)
 # Adjust these if your form question order differs.
+#
+# Layout (with profile questions at D, E):
+#   A=0  Timestamp
+#   B=1  Participant code
+#   C=2  Survey type
+#   D=3  Profile F1
+#   E=4  Profile F2
+#   F-K  ACT SG  A1–A6   (idx 5–10)
+#   L-Q  CMI     B1–B6   (idx 11–16)
+#   R-AA Rosenberg C1–C10 (idx 17–26)
+#   AB-AG EWB    D1–D6   (idx 27–32)
+#   AH-AK Reflect E1–E4  (idx 33–36)   ← fetch range must reach AK
 COL_MAP = {
     "timestamp":    0,
     "code":         1,
@@ -31,7 +43,7 @@ COL_MAP = {
     # Eudaimonic WB
     "ewb_d1": 27, "ewb_d2": 28, "ewb_d3": 29,
     "ewb_d4": 30, "ewb_d5": 31, "ewb_d6": 32,
-    # Open reflection
+    # Open reflection (post only; blank on pre rows)
     "reflect_e1": 33, "reflect_e2": 34, "reflect_e3": 35, "reflect_e4": 36,
 }
 
@@ -92,22 +104,23 @@ def parse_row(row, row_index):
         except (ValueError, TypeError):
             return None
 
-    compact_map = {
-        "act_a1": 3,
-        "act_a2": 4,
-        "act_a3": 5,
-        "act_a4": 6,
-        "act_a5": 7,
-        "act_a6": 8,
-    }
-    # Compact partial submissions may omit profile and all later sections.
-    compact_partial_max_index = compact_map["act_a6"]
-    is_compact_partial = len(row) <= compact_partial_max_index
+    survey_type = (row[COL_MAP["survey_type"]] if len(row) > COL_MAP["survey_type"] else "")
+    survey_type = str(survey_type).strip().lower()
+
+    # Guardrail: Google Sheets API omits trailing empty cells. For pre/post rows,
+    # we still expect columns through ewb_d6 (index 32) to exist.
+    min_expected_len = COL_MAP["ewb_d6"] + 1 if survey_type in ("pre", "post") else COL_MAP["survey_type"] + 1
+    if len(row) < min_expected_len:
+        current_app.logger.warning(
+            "Row %s has %s cols; expected >= %s for survey_type=%s. Check GOOGLE_SHEET_RANGE/COL_MAP/form ordering.",
+            row_index,
+            len(row),
+            min_expected_len,
+            survey_type or "unknown",
+        )
 
     parsed = {"sheet_row_index": row_index}
     for field, col in COL_MAP.items():
-        if is_compact_partial and field in compact_map:
-            col = compact_map[field]
         raw = row[col] if col < len(row) else None
         if field in ("timestamp", "code", "survey_type") or field.startswith("reflect"):
             parsed[field] = raw

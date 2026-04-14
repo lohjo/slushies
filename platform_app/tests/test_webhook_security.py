@@ -1,6 +1,6 @@
 import pytest
 
-from app import create_app, db
+from app import create_app, db, limiter
 from app.models import User
 
 
@@ -9,8 +9,10 @@ def app_ctx(monkeypatch):
     monkeypatch.setenv("FLASK_ENV", "testing")
     app = create_app("testing")
     with app.app_context():
+        limiter.reset()
         db.create_all()
         yield app
+        limiter.reset()
         db.session.remove()
         db.drop_all()
 

@@ -44,6 +44,13 @@ def sync():
     for r in results:
         click.echo(r)
 
+    processed = sum(1 for r in results if r.get("status") not in ("skipped", "failed"))
+    skipped = sum(1 for r in results if r.get("status") == "skipped")
+    failed = sum(1 for r in results if r.get("status") == "failed")
+    click.echo(
+        f"Done. {len(results)} rows, {processed} processed, {skipped} skipped, {failed} failed."
+    )
+
 
 if __name__ == "__main__":
     app.run()

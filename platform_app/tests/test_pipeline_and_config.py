@@ -1,4 +1,6 @@
 import csv
+import sys
+import types
 
 import pytest
 from unittest.mock import MagicMock
@@ -60,6 +62,31 @@ def test_process_row_deduplicates_same_sheet_row(app_ctx):
     assert second["status"] == "skipped"
     assert second["reason"] == "already processed"
     assert SurveyResponse.query.count() == 1
+
+
+def test_post_card_failure_rolls_back_and_retry_succeeds(app_ctx, monkeypatch):
+    pre_row = ["2026-04-02 09:00", "AB01", "pre", "4", "4", "4", "4", "4", "4"]
+    post_row = ["2026-04-03 09:00", "AB01", "post", "5", "5", "5", "5", "5", "5"]
+
+    assert process_row(raw_row=pre_row, row_index=2)["status"] == "pre_saved"
+
+    failing_card_service = types.SimpleNamespace(
+        generate_card=lambda **kwargs: (_ for _ in ()).throw(RuntimeError("render failed"))
+    )
+    monkeypatch.setitem(sys.modules, "app.services.card_service", failing_card_service)
+
+    failed = process_row(raw_row=post_row, row_index=3)
+    assert failed["status"] == "failed"
+    assert SurveyResponse.query.filter_by(sheet_row_index=3).first() is None
+
+    success_card_service = types.SimpleNamespace(
+        generate_card=lambda **kwargs: "instance/cards/retried.pdf"
+    )
+    monkeypatch.setitem(sys.modules, "app.services.card_service", success_card_service)
+
+    retried = process_row(raw_row=post_row, row_index=3)
+    assert retried["status"] == "card_generated"
+    assert SurveyResponse.query.filter_by(sheet_row_index=3).first() is not None
 
 
 def test_export_csv_includes_delta_columns(app_ctx, client):

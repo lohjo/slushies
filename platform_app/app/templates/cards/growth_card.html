@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: #fff; color: #1a1a1a; }
+    body { font-family: 'DejaVu Sans', sans-serif; background: #fff; color: #1a1a1a; }
 
     .card { width: 640px; margin: 0 auto; padding: 40px; }
 
@@ -53,7 +52,7 @@
 
   <div class="header">
     <h1>Your Growth Card</h1>
-    <p>platform by Impart &nbsp;·&nbsp; {{ cohort }} &nbsp;·&nbsp; Generated {{ generated_at }}</p>
+    <p>platform by {{ organization_name }} &nbsp;·&nbsp; {{ cohort }} &nbsp;·&nbsp; Generated {{ generated_at }}</p>
     <span class="participant-code">{{ code }}</span>
   </div>
 
@@ -103,7 +102,7 @@
   {% endif %}
 
   <div class="footer">
-    <span>platform by Impart &amp; Ngee Ann Polytechnic</span>
+    <span>platform by {{ organization_name }}</span>
     <span>Confidential &mdash; for participant use only</span>
   </div>
 

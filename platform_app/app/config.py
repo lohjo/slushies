@@ -27,6 +27,8 @@ class BaseConfig:
     MAIL_USERNAME = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     CARDS_OUTPUT_DIR = os.path.join(BASE_DIR, "..", "instance", "cards")
+    DEFAULT_COHORT = os.getenv("DEFAULT_COHORT", "").strip() or None
+    ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", "Impart & Ngee Ann Polytechnic")
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
     WEBHOOK_RATE_LIMIT = os.getenv("WEBHOOK_RATE_LIMIT", "30 per minute")
     SHEETS_ALLOW_EMPTY = os.getenv("SHEETS_ALLOW_EMPTY", "false").lower() == "true"

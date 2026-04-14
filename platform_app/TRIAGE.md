@@ -2,6 +2,39 @@ Caveman mode: **full**. Triaging `platform_app`.
 
 ---
 
+## 2026-04-15 Incident Addendum (Cloud Run 503 + Apps Script failures)
+
+### Root causes confirmed
+
+1. Apps Script live `WEBHOOK_URL` pointed to wrong region domain (`europe-west1`) while service runs in `asia-southeast1`.
+2. Cloud Run runtime missing `DATABASE_URL`/required secrets causes startup `RuntimeError` in production config path.
+3. Cloud Build deploy path had no migration execution; `Procfile` release hook not used by Cloud Run.
+
+### Fixes applied
+
+1. Added `migrate` step to root `cloudbuild.yaml` using Cloud Run Job execution before deploy.
+2. Deploy step now waits on migration success (`waitFor: ['migrate']`).
+3. Architecture doc updated with Cloud Run-specific migration model and checklist including region-accurate Apps Script webhook URL.
+
+### Ops actions still required (outside git)
+
+1. In Cloud Run service vars/secrets, set `DATABASE_URL`, `SECRET_KEY`, `GOOGLE_SHEET_ID`, `WEBHOOK_SECRET`.
+2. Ensure Cloud Run Job `slushies-migrate` exists and has same DB/secret wiring as runtime service.
+3. In live Apps Script editor, set `WEBHOOK_URL` to:
+	`https://slushies-411994757215.asia-southeast1.run.app/webhook/form-submit`
+4. Verify `WEBHOOK_SECRET` in Apps Script matches Cloud Run `WEBHOOK_SECRET` exactly.
+
+### Verification commands
+
+```bash
+gcloud run services describe slushies --region=asia-southeast1
+gcloud run services describe slushies --region=asia-southeast1 --format='value(spec.template.spec.containers[0].env)'
+gcloud run jobs execute slushies-migrate --region=asia-southeast1 --wait
+gcloud run services logs tail slushies --region=asia-southeast1
+```
+
+---
+
 ## 🔍 Code Triage — platform_app
 
 ### 🔴 CRITICAL

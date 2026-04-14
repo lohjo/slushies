@@ -154,11 +154,12 @@ Column order in the sheet is fixed and must match the `COL_MAP` dictionary in `s
 | A | Timestamp (auto) |
 | B | Participant code |
 | C | Survey type (`pre` / `post`) |
-| D–I | ACT SG items A1–A6 |
-| J–O | CMI items B1–B6 |
-| P–Y | Rosenberg items C1–C10 |
-| Z–AE | Eudaimonic WB items D1–D6 |
-| AF–AI | Open reflection E1–E4 (post only; blank for pre) |
+| D–E | Profile fields F1–F2 |
+| F–K | ACT SG items A1–A6 |
+| L–Q | CMI items B1–B6 |
+| R–AA | Rosenberg items C1–C10 |
+| AB–AG | Eudaimonic WB items D1–D6 |
+| AH–AK | Open reflection E1–E4 (post only; blank for pre) |
 
 If the form question order changes, update `COL_MAP` in `sheets_service.py` to match. Nothing else needs to change.
 
@@ -551,13 +552,30 @@ Add a PostgreSQL plugin in the Railway dashboard. It will inject `DATABASE_URL` 
 # Start:  gunicorn run:app
 ```
 
+### Cloud Run (Google Cloud)
+
+Cloud Run does not execute `Procfile` release hooks. The `release: flask db upgrade`
+line in `Procfile` only applies on Procfile-aware platforms (for example Railway/Heroku).
+
+For Cloud Run, run Alembic migrations explicitly before deploy. This repository uses
+Cloud Build with a migration gate step:
+
+```bash
+gcloud run jobs execute slushies-migrate --region=asia-southeast1 --wait
+```
+
+Then deploy the service revision.
+
 ### Production checklist
 
 - [ ] `FLASK_ENV=production` in environment
 - [ ] `SECRET_KEY` is a long random string (32+ bytes)
 - [ ] `DATABASE_URL` points to PostgreSQL, not SQLite
+- [ ] Cloud Run service has required vars/secrets: `DATABASE_URL`, `SECRET_KEY`, `GOOGLE_SHEET_ID`, `WEBHOOK_SECRET`
+- [ ] Cloud Run migration job (`slushies-migrate`) succeeds before service deploy
 - [ ] `service-account-key.json` is uploaded as a secret file (not in the repo)
 - [ ] `WEBHOOK_SECRET` is set and matches Apps Script
+- [ ] Apps Script `WEBHOOK_URL` points to the active Cloud Run region (for this project: `https://slushies-411994757215.asia-southeast1.run.app/webhook/form-submit`)
 - [ ] `instance/cards/` directory exists and is writable
 - [ ] HTTPS is enforced (Railway and Render do this automatically)
 

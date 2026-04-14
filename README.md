@@ -181,9 +181,26 @@ Required variables (minimum):
 - WEBHOOK_SECRET
 - DATABASE_URL (required in production)
 
+Optional but recommended:
+
+- DEFAULT_COHORT (auto-assigned when participant cohort is missing)
+- ORGANIZATION_NAME (shown on generated growth cards)
+
 For production secret injection, prefer:
 
 - GOOGLE_SERVICE_ACCOUNT_JSON
+
+Do not commit real secrets to source. Rotate `WEBHOOK_SECRET` immediately if exposed.
+
+### 2.1 Container build (canonical)
+
+Use root Dockerfile only:
+
+```bash
+docker build -f Dockerfile -t slushies:latest .
+```
+
+Cloud Build is configured to use this same command path.
 
 ### 3. Run migrations
 
