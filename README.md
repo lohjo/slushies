@@ -118,7 +118,7 @@ flowchart TB
 
 ```text
 slushies/
-├── platform_app/
+├── 
 │   ├── app/
 │   │   ├── routes/         # auth, dashboard, api, webhook
 │   │   ├── services/       # sheets, score, sync, card
@@ -162,7 +162,7 @@ source .venv/bin/activate
 Install dependencies:
 
 ```bash
-pip install -r platform_app/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 2. Configure environment
@@ -170,7 +170,7 @@ pip install -r platform_app/requirements.txt
 Copy and edit:
 
 ```bash
-cp platform_app/.env.example platform_app/.env
+cp .env.example .env
 ```
 
 Required variables (minimum):
@@ -205,7 +205,7 @@ Cloud Build is configured to use this same command path.
 ### 3. Run migrations
 
 ```bash
-cd platform_app
+cd .
 flask db upgrade
 ```
 
@@ -257,7 +257,7 @@ Expected headers:
 Run full test suite:
 
 ```bash
-cd platform_app
+cd .
 pytest -q
 ```
 
@@ -277,9 +277,9 @@ pytest -q tests/test_migration_integrity.py
 cd <project-root>
 python -m venv .venv
 source .venv/bin/activate
-pip install -r platform_app/requirements.txt
-cp platform_app/.env.example platform_app/.env
-cd platform_app
+pip install -r requirements.txt
+cp .env.example .env
+cd .
 flask db upgrade
 flask create-admin
 flask run
@@ -288,11 +288,11 @@ flask run
 2. Configure Google Sheets API access:
 - Create a Google Cloud service account.
 - Enable Google Sheets API for that project.
-- Download JSON key and save locally (default: `platform_app/service-account-key.json`) or set `GOOGLE_SERVICE_ACCOUNT_JSON`.
+- Download JSON key and save locally (default: `service-account-key.json`) or set `GOOGLE_SERVICE_ACCOUNT_JSON`.
 - Share the Google response Sheet with the service account email (Viewer access is enough).
 
 3. Verify sheet column order:
-- Keep form response columns aligned with `COL_MAP` in `platform_app/app/services/sheets_service.py`.
+- Keep form response columns aligned with `COL_MAP` in `app/services/sheets_service.py`.
 - If question order changes, update `COL_MAP` to match.
 
 4. Expose webhook endpoint publicly:
@@ -302,7 +302,7 @@ flask run
 
 5. Install Google Apps Script trigger:
 - Open the response sheet: **Extensions → Apps Script**.
-- Paste `platform_app/scripts/apps_script_trigger.gs`.
+- Paste `scripts/apps_script_trigger.gs`.
 - Set `WEBHOOK_URL` to `https://<public-url>/webhook/form-submit`.
 - Set `WEBHOOK_SECRET` to exactly match app `WEBHOOK_SECRET`.
 - Add trigger: **Triggers → Add Trigger → onFormSubmit → From spreadsheet → On form submit**.
@@ -319,7 +319,7 @@ flask run
 
 ```bash
 cd <project-root>
-cd platform_app
+cd .
 flask sync
 ```
 
@@ -348,7 +348,7 @@ This prevents schema drift and broken migration chains from merging.
 
 Script location:
 
-- platform_app/scripts/smoke_test.py
+- scripts/smoke_test.py
 
 It verifies:
 
@@ -361,7 +361,7 @@ It verifies:
 Run:
 
 ```bash
-cd platform_app
+cd .
 python scripts/smoke_test.py --url https://your-app.example.com --email admin@example.com --password <password>
 ```
 
@@ -379,7 +379,7 @@ Exit code:
 - Webhook secret compared with constant-time compare
 - Production blocks empty webhook secret
 - Security assessment artifact:
-  - platform_app/SECURITY_REPORT.md
+  - SECURITY_REPORT.md
 
 ---
 
@@ -401,3 +401,4 @@ Exit code:
 ---
 
 Built for reliable outcomes tracking with strong operational and security guardrails.
+

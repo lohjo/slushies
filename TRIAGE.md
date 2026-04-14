@@ -2,6 +2,34 @@ Caveman mode: **full**. Triaging `platform_app`.
 
 ---
 
+## 2026-04-15 Incident Addendum 2 (live verification)
+
+### Live facts validated
+
+1. Active gcloud context initially pointed to wrong project (`jwjbot`).
+2. Project for slushies URL `slushies-411994757215` resolves to `precise-dragon-491422-e8`.
+3. Service `slushies` exists in `europe-west1`, not `asia-southeast1`.
+4. Runtime logs in `europe-west1` still show boot crash on missing DB env:
+	`RuntimeError: DATABASE_URL or SQLALCHEMY_DATABASE_URI must be set when FLASK_ENV=production.`
+5. Cloud Run Job `slushies-migrate` does not exist in either `europe-west1` or `asia-southeast1`.
+
+### Immediate ops implications
+
+1. Region mismatch still unresolved: cloudbuild default `_REGION=asia-southeast1`, live service in `europe-west1`.
+2. Migration gate cannot execute until job exists in chosen region.
+3. Runtime env wiring still incomplete/intermittent for active revisions.
+
+### Recovery commands (project-scoped)
+
+```bash
+gcloud run services list --project=precise-dragon-491422-e8 --region=europe-west1
+gcloud run services logs read slushies --project=precise-dragon-491422-e8 --region=europe-west1 --limit=120
+gcloud run jobs list --project=precise-dragon-491422-e8 --region=europe-west1
+gcloud run jobs list --project=precise-dragon-491422-e8 --region=asia-southeast1
+```
+
+---
+
 ## 2026-04-15 Incident Addendum (Cloud Run 503 + Apps Script failures)
 
 ### Root causes confirmed

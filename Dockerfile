@@ -19,10 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
-COPY platform_app/requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY platform_app/ .
+COPY . .
 
 # Run as an unprivileged user.
 RUN useradd --create-home --shell /usr/sbin/nologin appuser && chown -R appuser:appuser /app

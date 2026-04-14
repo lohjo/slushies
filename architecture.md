@@ -89,7 +89,7 @@
 ## 2. Repository Structure
 
 ```
-platform_app/
+
 │
 ├── run.py                        # App entrypoint + Flask CLI commands
 ├── requirements.txt
@@ -500,7 +500,7 @@ Copy `.env.example` to `.env` and populate all values before running.
 ```bash
 # 1. Clone and enter the project
 git clone <repo>
-cd platform_app
+cd .
 
 # 2. Create a virtual environment
 python -m venv venv

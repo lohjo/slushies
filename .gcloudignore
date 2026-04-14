@@ -11,4 +11,3 @@ venv
 **/*.pyo
 **/*.pyd
 instance
-platform_app/instance

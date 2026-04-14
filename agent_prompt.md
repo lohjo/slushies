@@ -27,7 +27,7 @@ and Ngee Ann Polytechnic.
 
 ## Project context
 
-The app is scaffolded at `platform_app/`. Read `ARCHITECTURE.md` first for
+The app is scaffolded at ``. Read `ARCHITECTURE.md` first for
 the full data pipeline. Key facts:
 
 - Stack: Flask + SQLAlchemy + SQLite (dev) / PostgreSQL (prod)
@@ -83,7 +83,7 @@ the full data pipeline. Key facts:
 Activate DevOps Automator mode.
 
 You are deploying a Flask application called `platform` to Railway.app.
-The app is at `platform_app/`. Read `ARCHITECTURE.md` for the full system
+The app is at ``. Read `ARCHITECTURE.md` for the full system
 overview before starting.
 
 ## Stack
@@ -323,7 +323,7 @@ Produce a threat model summary in this format:
 ```
 Activate AgentsOrchestrator mode.
 
-Run the following three-agent pipeline on the `platform_app/` project.
+Run the following three-agent pipeline on the `` project.
 Read `ARCHITECTURE.md` first to understand the system.
 
 Pipeline:
