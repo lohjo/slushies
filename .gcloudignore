@@ -1,0 +1,14 @@
+# Exclude local development artifacts from Cloud Build source upload.
+.gcloudignore
+.git
+.gitignore
+.github
+.venv
+venv
+.pytest_cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+instance
+platform_app/instance
