@@ -127,7 +127,7 @@ class GrowthCard(db.Model):
     __tablename__ = "growth_cards"
 
     id             = db.Column(db.Integer, primary_key=True)
-    participant_id = db.Column(db.Integer, db.ForeignKey("participants.id"), nullable=False)
+    participant_id = db.Column(db.Integer, db.ForeignKey("participants.id"), nullable=False, unique=True)
     generated_at   = db.Column(db.DateTime, default=datetime.utcnow)
     file_path      = db.Column(db.String(255))   # local path to PDF/PNG
     drive_url      = db.Column(db.String(500))   # optional Google Drive link

@@ -54,7 +54,7 @@ def register():
             email=data["email"],
             password=hashed_pw,
             name=data.get("name"),
-            role=data.get("role", "staff"),
+            role="staff",
         )
         db.session.add(user)
         db.session.commit()

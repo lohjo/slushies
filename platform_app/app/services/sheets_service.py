@@ -54,23 +54,29 @@ def _get_service():
     return build("sheets", "v4", credentials=creds)
 
 
-def fetch_all_rows(sheet_range="Sheet1!A2:AJ"):
+def fetch_all_rows(sheet_range=None):
     """
     Fetches all response rows from the linked Google Sheet.
     Skips the header row (A1) by starting at A2.
     Returns a list of raw row arrays.
     """
     service = _get_service()
+    effective_range = sheet_range or current_app.config.get("GOOGLE_SHEET_RANGE", "Sheet1!A2:AJ")
     result = (
         service.spreadsheets()
         .values()
         .get(
             spreadsheetId=current_app.config["GOOGLE_SHEET_ID"],
-            range=sheet_range,
+            range=effective_range,
         )
         .execute()
     )
-    return result.get("values", [])
+    values = result.get("values", [])
+    if not values and not current_app.config.get("SHEETS_ALLOW_EMPTY", False):
+        raise RuntimeError(
+            "Google Sheets returned no rows. Verify GOOGLE_SHEET_RANGE tab name and bounds."
+        )
+    return values
 
 
 def parse_row(row, row_index):

@@ -65,8 +65,27 @@ def delete_participant(code):
 @api_bp.route("/responses", methods=["GET"])
 @login_required
 def list_responses():
-    rows = SurveyResponse.query.all()
-    return jsonify([r.to_dict() for r in rows])
+    try:
+        limit = int(request.args.get("limit", 100))
+        offset = int(request.args.get("offset", 0))
+    except ValueError:
+        return jsonify({"error": "limit and offset must be integers"}), 400
+
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+
+    query = SurveyResponse.query.order_by(SurveyResponse.id.asc())
+    rows = query.offset(offset).limit(limit).all()
+    total = query.count()
+    return jsonify(
+        {
+            "items": [r.to_dict() for r in rows],
+            "limit": limit,
+            "offset": offset,
+            "returned": len(rows),
+            "total": total,
+        }
+    )
 
 
 @api_bp.route("/responses/<int:id>", methods=["GET"])

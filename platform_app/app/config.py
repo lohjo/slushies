@@ -14,6 +14,7 @@ class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
+    GOOGLE_SHEET_RANGE = os.getenv("GOOGLE_SHEET_RANGE", "Sheet1!A2:AJ")
     GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
     GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv(
         "GOOGLE_SERVICE_ACCOUNT_FILE", "service-account-key.json"
@@ -26,6 +27,7 @@ class BaseConfig:
     CARDS_OUTPUT_DIR = os.path.join(BASE_DIR, "..", "instance", "cards")
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
     WEBHOOK_RATE_LIMIT = os.getenv("WEBHOOK_RATE_LIMIT", "30 per minute")
+    SHEETS_ALLOW_EMPTY = os.getenv("SHEETS_ALLOW_EMPTY", "false").lower() == "true"
 
     @staticmethod
     def init_app(app):
@@ -55,11 +57,11 @@ class DevelopmentConfig(BaseConfig):
 
 class ProductionConfig(BaseConfig):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    SQLALCHEMY_DATABASE_URI = None
 
     @staticmethod
     def init_app(app):
-        uri = app.config.get("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
+        uri = os.getenv("DATABASE_URL")
         if not uri:
             raise RuntimeError("DATABASE_URL must be set when FLASK_ENV=production.")
 

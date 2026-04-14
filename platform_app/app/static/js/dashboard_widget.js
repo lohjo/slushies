@@ -2,7 +2,7 @@
     const mountNode = document.getElementById("react-dashboard-widget");
     const payloadNode = document.getElementById("dashboard-stats-data");
 
-    if (!mountNode || !payloadNode || !window.React || !window.ReactDOM) {
+    if (!mountNode || !payloadNode) {
         return;
     }
 
@@ -19,67 +19,65 @@
         console.error("Failed to parse dashboard data", error);
     }
 
-    const { createElement: h, useMemo } = React;
-
-    function StatItem({ label, value, tone }) {
-        return h(
-            "article",
-            { className: "stat-item stat-" + tone },
-            h("p", { className: "stat-label" }, label),
-            h("p", { className: "stat-value" }, String(value))
-        );
+    function createElement(tagName, className, textValue) {
+        const element = document.createElement(tagName);
+        if (className) {
+            element.className = className;
+        }
+        if (typeof textValue !== "undefined") {
+            element.textContent = String(textValue);
+        }
+        return element;
     }
 
-    function EditorialDashboardWidget(props) {
-        const completionRate = useMemo(function () {
-            if (!props.totalPre) {
-                return 0;
-            }
-            return Math.round((props.totalPost / props.totalPre) * 100);
-        }, [props.totalPost, props.totalPre]);
-
-        return h(
-            "section",
-            { className: "editorial-widget" },
-            h(
-                "div",
-                { className: "widget-intro" },
-                h("p", { className: "widget-kicker" }, "Live Snapshot"),
-                h("h2", null, "Response Momentum"),
-                h(
-                    "p",
-                    { className: "widget-copy" },
-                    "A concise pulse-check on survey completion and card delivery."
-                )
-            ),
-            h(
-                "div",
-                { className: "widget-grid" },
-                h(StatItem, { label: "Pre Surveys", value: props.totalPre, tone: "neutral" }),
-                h(StatItem, { label: "Post Surveys", value: props.totalPost, tone: "calm" }),
-                h(StatItem, { label: "Cards Issued", value: props.cardsIssued, tone: "warm" }),
-                h(StatItem, { label: "Participants", value: props.participants, tone: "neutral" })
-            ),
-            h(
-                "div",
-                { className: "completion-band" },
-                h("p", null, "Completion Rate"),
-                h("strong", null, completionRate + "%"),
-                h(
-                    "div",
-                    {
-                        className: "completion-meter",
-                        role: "progressbar",
-                        "aria-valuemin": 0,
-                        "aria-valuemax": 100,
-                        "aria-valuenow": completionRate,
-                        "aria-label": "Post survey completion rate",
-                    },
-                    h("span", { style: { width: Math.max(0, Math.min(completionRate, 100)) + "%" } })
-                )
-            )
-        );
+    function createStatItem(label, value, tone) {
+        const item = createElement("article", "stat-item stat-" + tone);
+        item.appendChild(createElement("p", "stat-label", label));
+        item.appendChild(createElement("p", "stat-value", value));
+        return item;
     }
 
-    ReactDOM.createRoot(mountNode).render(h(EditorialDashboardWidget, data));
+    const completionRate = data.totalPre
+        ? Math.round((data.totalPost / data.totalPre) * 100)
+        : 0;
+
+    const section = createElement("section", "editorial-widget");
+
+    const intro = createElement("div", "widget-intro");
+    intro.appendChild(createElement("p", "widget-kicker", "Live Snapshot"));
+    intro.appendChild(createElement("h2", "", "Response Momentum"));
+    intro.appendChild(
+        createElement(
+            "p",
+            "widget-copy",
+            "A concise pulse-check on survey completion and card delivery."
+        )
+    );
+    section.appendChild(intro);
+
+    const grid = createElement("div", "widget-grid");
+    grid.appendChild(createStatItem("Pre Surveys", data.totalPre, "neutral"));
+    grid.appendChild(createStatItem("Post Surveys", data.totalPost, "calm"));
+    grid.appendChild(createStatItem("Cards Issued", data.cardsIssued, "warm"));
+    grid.appendChild(createStatItem("Participants", data.participants, "neutral"));
+    section.appendChild(grid);
+
+    const band = createElement("div", "completion-band");
+    band.appendChild(createElement("p", "", "Completion Rate"));
+    band.appendChild(createElement("strong", "", completionRate + "%"));
+
+    const meter = createElement("div", "completion-meter");
+    meter.setAttribute("role", "progressbar");
+    meter.setAttribute("aria-valuemin", "0");
+    meter.setAttribute("aria-valuemax", "100");
+    meter.setAttribute("aria-valuenow", String(completionRate));
+    meter.setAttribute("aria-label", "Post survey completion rate");
+
+    const fill = createElement("span");
+    fill.style.width = Math.max(0, Math.min(completionRate, 100)) + "%";
+    meter.appendChild(fill);
+    band.appendChild(meter);
+    section.appendChild(band);
+
+    mountNode.replaceChildren(section);
 })();

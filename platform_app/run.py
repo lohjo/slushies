@@ -3,7 +3,8 @@ import click
 from app import create_app, db
 from app.models import User, Participant, SurveyResponse, GrowthCard
 
-app = create_app(os.getenv("FLASK_ENV", "development"))
+APP_ENV = os.getenv("FLASK_ENV", "development").lower()
+app = create_app(APP_ENV)
 
 
 # ─── CLI commands ─────────────────────────────────────────────────────────────
@@ -11,6 +12,11 @@ app = create_app(os.getenv("FLASK_ENV", "development"))
 @app.cli.command("init-db")
 def init_db():
     """Create all database tables."""
+    if APP_ENV == "production":
+        raise click.ClickException(
+            "init-db is disabled in production. Run 'flask db upgrade' instead."
+        )
+
     with app.app_context():
         db.create_all()
         click.echo("Database initialised.")

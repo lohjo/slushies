@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Participant {{ participant.code }}</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--bg: #f6f9fc;
+			--panel: #ffffff;
+			--ink: #1a2840;
+			--muted: #5d6d87;
+			--line: #d7e0ec;
+			--accent: #0466c8;
+			--good: #15803d;
+			--warn: #9f1239;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			font-family: "Manrope", sans-serif;
+			background: radial-gradient(circle at 0% 0%, #eef6ff 0%, #f8fbff 35%, #f6f9fc 100%);
+			color: var(--ink);
+			padding: 1.25rem;
+		}
+
+		main {
+			max-width: 980px;
+			margin: 0 auto;
+			display: grid;
+			gap: 1rem;
+		}
+
+		a.back-link {
+			color: var(--accent);
+			font-weight: 600;
+			text-decoration: none;
+		}
+
+		a.back-link:hover { text-decoration: underline; }
+
+		.hero,
+		.section {
+			background: var(--panel);
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			padding: 1rem;
+		}
+
+		.hero h1 {
+			font-family: "Fraunces", serif;
+			font-size: 1.8rem;
+			margin: 0 0 0.35rem;
+		}
+
+		.meta {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			color: var(--muted);
+			font-size: 0.92rem;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+			gap: 1rem;
+		}
+
+		h2 {
+			font-size: 1.1rem;
+			margin: 0 0 0.7rem;
+		}
+
+		dl {
+			margin: 0;
+			display: grid;
+			grid-template-columns: 1fr auto;
+			gap: 0.4rem 0.7rem;
+		}
+
+		dt {
+			color: var(--muted);
+			font-size: 0.92rem;
+		}
+
+		dd {
+			margin: 0;
+			font-weight: 600;
+		}
+
+		.empty {
+			border: 1px dashed var(--line);
+			border-radius: 10px;
+			padding: 0.8rem;
+			font-size: 0.92rem;
+			color: var(--muted);
+		}
+
+		.delta {
+			font-variant-numeric: tabular-nums;
+		}
+
+		.delta.positive { color: var(--good); }
+		.delta.negative { color: var(--warn); }
+
+		@media (max-width: 640px) {
+			body { padding: 0.75rem; }
+			.hero h1 { font-size: 1.45rem; }
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<a class="back-link" href="{{ url_for('dashboard.index') }}">&larr; Back to dashboard</a>
+
+		<section class="hero" aria-labelledby="participant-heading">
+			<h1 id="participant-heading">Participant {{ participant.code }}</h1>
+			<p class="meta">
+				<span>Cohort: {{ participant.cohort or "Not set" }}</span>
+				<span>Joined: {{ participant.created_at.strftime('%Y-%m-%d %H:%M') if participant.created_at else "Unknown" }}</span>
+			</p>
+		</section>
+
+		<section class="grid" aria-label="Survey summaries">
+			<article class="section">
+				<h2>Pre Survey</h2>
+				{% if pre %}
+					<dl>
+						<dt>ACT total</dt><dd>{{ pre.act_total if pre.act_total is not none else "-" }}</dd>
+						<dt>CMI total</dt><dd>{{ pre.cmi_total if pre.cmi_total is not none else "-" }}</dd>
+						<dt>Rosenberg total</dt><dd>{{ pre.rsem_total if pre.rsem_total is not none else "-" }}</dd>
+						<dt>EWB total</dt><dd>{{ pre.ewb_total if pre.ewb_total is not none else "-" }}</dd>
+					</dl>
+				{% else %}
+					<p class="empty">No pre survey submitted yet.</p>
+				{% endif %}
+			</article>
+
+			<article class="section">
+				<h2>Post Survey</h2>
+				{% if post %}
+					<dl>
+						<dt>ACT total</dt><dd>{{ post.act_total if post.act_total is not none else "-" }}</dd>
+						<dt>CMI total</dt><dd>{{ post.cmi_total if post.cmi_total is not none else "-" }}</dd>
+						<dt>Rosenberg total</dt><dd>{{ post.rsem_total if post.rsem_total is not none else "-" }}</dd>
+						<dt>EWB total</dt><dd>{{ post.ewb_total if post.ewb_total is not none else "-" }}</dd>
+					</dl>
+				{% else %}
+					<p class="empty">No post survey submitted yet.</p>
+				{% endif %}
+			</article>
+
+			<article class="section">
+				<h2>Growth Card</h2>
+				{% if card %}
+					<dl>
+						<dt>Generated</dt>
+						<dd>{{ card.generated_at.strftime('%Y-%m-%d %H:%M') if card.generated_at else "Unknown" }}</dd>
+						<dt>Delta ACT</dt>
+						<dd class="delta {% if card.delta_act and card.delta_act > 0 %}positive{% elif card.delta_act and card.delta_act < 0 %}negative{% endif %}">{{ card.delta_act if card.delta_act is not none else "-" }}</dd>
+						<dt>Delta CMI</dt>
+						<dd class="delta {% if card.delta_cmi and card.delta_cmi > 0 %}positive{% elif card.delta_cmi and card.delta_cmi < 0 %}negative{% endif %}">{{ card.delta_cmi if card.delta_cmi is not none else "-" }}</dd>
+						<dt>Delta Rosenberg</dt>
+						<dd class="delta {% if card.delta_rsem and card.delta_rsem > 0 %}positive{% elif card.delta_rsem and card.delta_rsem < 0 %}negative{% endif %}">{{ card.delta_rsem if card.delta_rsem is not none else "-" }}</dd>
+						<dt>Delta EWB</dt>
+						<dd class="delta {% if card.delta_ewb and card.delta_ewb > 0 %}positive{% elif card.delta_ewb and card.delta_ewb < 0 %}negative{% endif %}">{{ card.delta_ewb if card.delta_ewb is not none else "-" }}</dd>
+					</dl>
+					{% if card.file_path %}
+						<p><strong>File:</strong> {{ card.file_path }}</p>
+					{% endif %}
+				{% else %}
+					<p class="empty">No growth card generated yet.</p>
+				{% endif %}
+			</article>
+		</section>
+	</main>
+</body>
+</html>

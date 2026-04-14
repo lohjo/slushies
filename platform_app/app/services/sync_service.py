@@ -90,12 +90,19 @@ def process_row(raw_row: list, row_index: int) -> dict:
                 cohort=participant.cohort or "platform",
             )
 
-            card = GrowthCard(
-                participant_id=participant.id,
-                file_path=card_path,
-                **deltas,
-            )
-            db.session.add(card)
+            card = GrowthCard.query.filter_by(participant_id=participant.id).first()
+            if card:
+                card.file_path = card_path
+                for key, value in deltas.items():
+                    if hasattr(card, key):
+                        setattr(card, key, value)
+            else:
+                card = GrowthCard(
+                    participant_id=participant.id,
+                    file_path=card_path,
+                    **deltas,
+                )
+                db.session.add(card)
             db.session.commit()
 
             return {"status": "card_generated", "code": code, "path": card_path}

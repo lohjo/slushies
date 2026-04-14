@@ -1,11 +1,11 @@
 import csv
 
 import pytest
+from unittest.mock import MagicMock
 
 from app import create_app, db
-from app.config import ProductionConfig
 from app.models import GrowthCard, Participant, SurveyResponse, User
-from app.services.sheets_service import parse_row
+from app.services.sheets_service import fetch_all_rows, parse_row
 from app.services.sync_service import process_row
 
 
@@ -103,23 +103,95 @@ def test_export_csv_includes_delta_columns(app_ctx, client):
     assert rows[0]["delta_ewb"] == "2.0"
 
 
-def test_production_config_requires_database_url():
-    original_uri = ProductionConfig.SQLALCHEMY_DATABASE_URI
-    ProductionConfig.SQLALCHEMY_DATABASE_URI = None
-
-    try:
-        with pytest.raises(RuntimeError, match="DATABASE_URL"):
-            create_app("production")
-    finally:
-        ProductionConfig.SQLALCHEMY_DATABASE_URI = original_uri
+def test_production_config_requires_database_url(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        create_app("production")
 
 
-def test_production_config_rewrites_postgres_scheme():
-    original_uri = ProductionConfig.SQLALCHEMY_DATABASE_URI
-    ProductionConfig.SQLALCHEMY_DATABASE_URI = "postgres://user:pass@localhost:5432/platform"
+def test_production_config_rewrites_postgres_scheme(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/platform")
+    app = create_app("production")
+    assert app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql://")
 
-    try:
-        app = create_app("production")
-        assert app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql://")
-    finally:
-        ProductionConfig.SQLALCHEMY_DATABASE_URI = original_uri
+
+def test_fetch_all_rows_uses_configured_range(app_ctx, monkeypatch):
+    execute = MagicMock(return_value={"values": [["row"]]})
+    get = MagicMock(return_value=MagicMock(execute=execute))
+    values = MagicMock(get=get)
+    spreadsheets = MagicMock(return_value=MagicMock(values=MagicMock(return_value=values)))
+    fake_service = MagicMock(spreadsheets=spreadsheets)
+    monkeypatch.setattr("app.services.sheets_service._get_service", lambda: fake_service)
+    app_ctx.config["GOOGLE_SHEET_ID"] = "sheet-id"
+    app_ctx.config["GOOGLE_SHEET_RANGE"] = "Responses!A2:AJ"
+
+    rows = fetch_all_rows()
+
+    assert rows == [["row"]]
+    get.assert_called_once_with(spreadsheetId="sheet-id", range="Responses!A2:AJ")
+
+
+def test_fetch_all_rows_raises_on_unexpected_empty(app_ctx, monkeypatch):
+    execute = MagicMock(return_value={"values": []})
+    get = MagicMock(return_value=MagicMock(execute=execute))
+    values = MagicMock(get=get)
+    spreadsheets = MagicMock(return_value=MagicMock(values=MagicMock(return_value=values)))
+    fake_service = MagicMock(spreadsheets=spreadsheets)
+    monkeypatch.setattr("app.services.sheets_service._get_service", lambda: fake_service)
+    app_ctx.config["GOOGLE_SHEET_ID"] = "sheet-id"
+    app_ctx.config["SHEETS_ALLOW_EMPTY"] = False
+
+    with pytest.raises(RuntimeError, match="GOOGLE_SHEET_RANGE"):
+        fetch_all_rows(sheet_range="Sheet1!A2:AJ")
+
+
+def test_get_service_uses_json_env_when_present(app_ctx, monkeypatch):
+    fake_credentials = MagicMock(name="creds")
+    from_service_account_info = MagicMock(return_value=fake_credentials)
+    monkeypatch.setattr(
+        "app.services.sheets_service.service_account.Credentials.from_service_account_info",
+        from_service_account_info,
+    )
+    monkeypatch.setattr(
+        "app.services.sheets_service.build",
+        MagicMock(return_value="fake-service"),
+    )
+
+    app_ctx.config["GOOGLE_SERVICE_ACCOUNT_JSON"] = '{"type":"service_account"}'
+
+    from app.services.sheets_service import _get_service
+
+    service = _get_service()
+    assert service == "fake-service"
+    from_service_account_info.assert_called_once()
+
+
+def test_get_service_falls_back_to_file_when_env_missing(app_ctx, monkeypatch):
+    fake_credentials = MagicMock(name="creds")
+    from_service_account_file = MagicMock(return_value=fake_credentials)
+    monkeypatch.setattr(
+        "app.services.sheets_service.service_account.Credentials.from_service_account_file",
+        from_service_account_file,
+    )
+    monkeypatch.setattr(
+        "app.services.sheets_service.build",
+        MagicMock(return_value="fake-service"),
+    )
+
+    app_ctx.config["GOOGLE_SERVICE_ACCOUNT_JSON"] = None
+    app_ctx.config["GOOGLE_SERVICE_ACCOUNT_FILE"] = "service-account-key.json"
+
+    from app.services.sheets_service import _get_service
+
+    service = _get_service()
+    assert service == "fake-service"
+    from_service_account_file.assert_called_once_with("service-account-key.json", scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"])
+
+
+def test_get_service_invalid_json_env_raises_clear_error(app_ctx):
+    app_ctx.config["GOOGLE_SERVICE_ACCOUNT_JSON"] = "{invalid-json"
+
+    from app.services.sheets_service import _get_service
+
+    with pytest.raises(RuntimeError, match="not valid JSON"):
+        _get_service()

@@ -4,6 +4,7 @@ Receives real-time POST from Google Apps Script onFormSubmit trigger.
 Validates a shared secret header, then processes the row immediately.
 """
 import hmac
+import os
 from flask import Blueprint, request, jsonify, current_app
 
 from app import limiter
@@ -19,6 +20,10 @@ def _verify_secret(req):
     """
     expected = current_app.config.get("WEBHOOK_SECRET", "")
     if not expected:
+        env = os.getenv("FLASK_ENV", "development").lower()
+        if env == "production":
+            current_app.logger.error("WEBHOOK_SECRET is missing in production.")
+            return False
         return True   # skip verification in development
     provided = req.headers.get("X-Webhook-Secret", "")
     return hmac.compare_digest(expected, provided)
