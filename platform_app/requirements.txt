@@ -16,3 +16,4 @@ weasyprint>=62.0
 
 # PostgreSQL driver (comment out if using SQLite only)
 psycopg2-binary>=2.9
+requests>=2.32

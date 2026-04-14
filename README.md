@@ -25,8 +25,8 @@ Slushies Platform is a Flask application that ingests Google Form responses from
 flowchart TD
     A[Google Forms Pre/Post] --> B[Google Sheets]
     B --> C{Trigger Path}
-    C -->|Webhook| D[/webhook/form-submit]
-    C -->|Manual Sync| E[/api/sync]
+  C -->|Webhook| D["/webhook/form-submit"]
+  C -->|Manual Sync| E["/api/sync"]
     D --> F[sync_service]
     E --> F
     F --> G[sheets_service parse + validate]
