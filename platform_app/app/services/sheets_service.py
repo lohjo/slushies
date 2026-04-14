@@ -16,22 +16,21 @@ COL_MAP = {
     "timestamp":    0,
     "code":         1,
     "survey_type":  2,   # participant answers 'pre' or 'post'
+    # profile
+    "profile_f1": 3, "profile_f2": 4,
     # ACT SG
-    "act_a1": 3,  "act_a2": 4,  "act_a3": 5,
-    "act_a4": 6,  "act_a5": 7,  "act_a6": 8,
+    "act_a1": 5,  "act_a2": 6,  "act_a3": 7,
+    "act_a4": 8,  "act_a5": 9,  "act_a6": 10,
     # CMI
-    "cmi_b1": 9,  "cmi_b2": 10, "cmi_b3": 11,
-    "cmi_b4": 12, "cmi_b5": 13, "cmi_b6": 14,
+    "cmi_b1": 11,  "cmi_b2": 12, "cmi_b3": 13,
+    "cmi_b4": 14, "cmi_b5": 15, "cmi_b6": 16,
     # Rosenberg
-    "rsem_c1": 15, "rsem_c2": 16, "rsem_c3": 17, "rsem_c4": 18,
-    "rsem_c5": 19, "rsem_c6": 20, "rsem_c7": 21, "rsem_c8": 22,
-    "rsem_c9": 23, "rsem_c10": 24,
+    "rsem_c1": 17, "rsem_c2": 18, "rsem_c3": 19, "rsem_c4": 20,
+    "rsem_c5": 21, "rsem_c6": 22, "rsem_c7": 23, "rsem_c8": 24,
+    "rsem_c9": 25, "rsem_c10": 26,
     # Eudaimonic WB
-    "ewb_d1": 25, "ewb_d2": 26, "ewb_d3": 27,
-    "ewb_d4": 28, "ewb_d5": 29, "ewb_d6": 30,
-    # Open reflection (post only — blank for pre rows)
-    "reflect_e1": 31, "reflect_e2": 32,
-    "reflect_e3": 33, "reflect_e4": 34,
+    "ewb_d1": 27, "ewb_d2": 28, "ewb_d3": 29,
+    "ewb_d4": 30, "ewb_d5": 31, "ewb_d6": 32,
 }
 
 
