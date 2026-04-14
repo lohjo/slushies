@@ -105,6 +105,7 @@ def test_export_csv_includes_delta_columns(app_ctx, client):
 
 def test_production_config_requires_database_url(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("SQLALCHEMY_DATABASE_URI", raising=False)
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         create_app("production")
 

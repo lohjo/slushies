@@ -64,9 +64,11 @@ class ProductionConfig(BaseConfig):
 
     @staticmethod
     def init_app(app):
-        uri = os.getenv("DATABASE_URL")
+        uri = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URI")
         if not uri:
-            raise RuntimeError("DATABASE_URL must be set when FLASK_ENV=production.")
+            raise RuntimeError(
+                "DATABASE_URL or SQLALCHEMY_DATABASE_URI must be set when FLASK_ENV=production."
+            )
 
         # Heroku/Render supply postgres:// but SQLAlchemy needs postgresql://
         if uri.startswith("postgres://"):
