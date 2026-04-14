@@ -252,6 +252,63 @@ pytest -q tests/test_migration_integrity.py
 
 ---
 
+## Testing with Real Google Forms Submissions (E2E)
+
+1. Prepare local app runtime:
+
+```bash
+cd <project-root>
+python -m venv .venv
+source .venv/bin/activate
+pip install -r platform_app/requirements.txt
+cp platform_app/.env.example platform_app/.env
+cd platform_app
+flask db upgrade
+flask create-admin
+flask run
+```
+
+2. Configure Google Sheets API access:
+- Create a Google Cloud service account.
+- Enable Google Sheets API for that project.
+- Download JSON key and save locally (default: `platform_app/service-account-key.json`) or set `GOOGLE_SERVICE_ACCOUNT_JSON`.
+- Share the Google response Sheet with the service account email (Viewer access is enough).
+
+3. Verify sheet column order:
+- Keep form response columns aligned with `COL_MAP` in `platform_app/app/services/sheets_service.py`.
+- If question order changes, update `COL_MAP` to match.
+
+4. Expose webhook endpoint publicly:
+- Deployed app: use your HTTPS app URL.
+- Local app: use a tunnel (for example ngrok/cloudflared).
+- Endpoint to expose: `POST /webhook/form-submit`.
+
+5. Install Google Apps Script trigger:
+- Open the response sheet: **Extensions → Apps Script**.
+- Paste `platform_app/scripts/apps_script_trigger.gs`.
+- Set `WEBHOOK_URL` to `https://<public-url>/webhook/form-submit`.
+- Set `WEBHOOK_SECRET` to exactly match app `WEBHOOK_SECRET`.
+- Add trigger: **Triggers → Add Trigger → onFormSubmit → From spreadsheet → On form submit**.
+
+6. Run real submission verification:
+- Submit a real Google Form response.
+- Check Apps Script execution logs for webhook HTTP result.
+- Verify new responses in dashboard/API.
+- For a `post` submission with an existing `pre` for the same code, verify growth card generation.
+
+7. Use fallback sync if webhook delivery is missed:
+- Authenticated API sync: `POST /api/sync`
+- CLI sync:
+
+```bash
+cd <project-root>
+cd platform_app
+flask sync
+```
+
+---
+
+
 ## CI and Migration Gate
 
 GitHub Actions workflow in .github/workflows/ci.yml has two jobs:
