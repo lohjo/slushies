@@ -1,11 +1,22 @@
 /**
  * apps_script_trigger.gs
  *
- * Paste this into Extensions → Apps Script inside your Google Sheet.
- * Then add a trigger: Triggers → Add Trigger →
- *   Function: onFormSubmit | Event: From spreadsheet → On form submit
+ * Setup:
+ * 1) Open the response Google Sheet: Extensions → Apps Script
+ * 2) Paste this file into the script editor
+ * 3) Set WEBHOOK_URL to your public endpoint:
+ *      https://<your-host>/webhook/form-submit
+ *    (If running Flask locally, expose it via a tunnel first.)
+ * 4) Set WEBHOOK_SECRET to exactly match your app WEBHOOK_SECRET env value
+ * 5) Add trigger: Triggers → Add Trigger →
+ *      Function: onFormSubmit
+ *      Event source: From spreadsheet
+ *      Event type: On form submit
  *
- * Replace WEBHOOK_URL and WEBHOOK_SECRET with your actual values.
+ * After setup, each form submission sends:
+ *   { "row_index": <sheet row>, "values": [...] }
+ * with header:
+ *   X-Webhook-Secret: <WEBHOOK_SECRET>
  */
 
 var WEBHOOK_URL    = "https://your-server.com/webhook/form-submit";
