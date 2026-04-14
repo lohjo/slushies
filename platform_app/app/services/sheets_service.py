@@ -31,6 +31,8 @@ COL_MAP = {
     # Eudaimonic WB
     "ewb_d1": 27, "ewb_d2": 28, "ewb_d3": 29,
     "ewb_d4": 30, "ewb_d5": 31, "ewb_d6": 32,
+    # Open reflection
+    "reflect_e1": 33, "reflect_e2": 34, "reflect_e3": 35, "reflect_e4": 36,
 }
 
 
@@ -60,7 +62,7 @@ def fetch_all_rows(sheet_range=None):
     Returns a list of raw row arrays.
     """
     service = _get_service()
-    effective_range = sheet_range or current_app.config.get("GOOGLE_SHEET_RANGE", "Sheet1!A2:AJ")
+    effective_range = sheet_range or current_app.config.get("GOOGLE_SHEET_RANGE", "Sheet1!A2:AK")
     result = (
         service.spreadsheets()
         .values()
@@ -90,8 +92,22 @@ def parse_row(row, row_index):
         except (ValueError, TypeError):
             return None
 
+    compact_map = {
+        "act_a1": 3,
+        "act_a2": 4,
+        "act_a3": 5,
+        "act_a4": 6,
+        "act_a5": 7,
+        "act_a6": 8,
+    }
+    # Compact partial submissions may omit profile and all later sections.
+    compact_partial_max_index = compact_map["act_a6"]
+    is_compact_partial = len(row) <= compact_partial_max_index
+
     parsed = {"sheet_row_index": row_index}
     for field, col in COL_MAP.items():
+        if is_compact_partial and field in compact_map:
+            col = compact_map[field]
         raw = row[col] if col < len(row) else None
         if field in ("timestamp", "code", "survey_type") or field.startswith("reflect"):
             parsed[field] = raw
