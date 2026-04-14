@@ -50,7 +50,8 @@ class DevelopmentConfig(BaseConfig):
             db_path = uri[len(prefix):]
             if db_path and not os.path.isabs(db_path):
                 db_path = os.path.abspath(os.path.join(BASE_DIR, "..", db_path))
-                app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path.replace('\\', '/')}"
+                normalized_path = db_path.replace("\\", "/")
+                app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{normalized_path}"
 
         os.makedirs(INSTANCE_DIR, exist_ok=True)
 
