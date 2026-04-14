@@ -1,0 +1,96 @@
+"""
+sheets_service.py
+Handles all communication with the Google Sheets API v4.
+Authenticates via a Service Account so no user OAuth flow is needed.
+"""
+import json
+from flask import current_app
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+
+# Column positions in the Google Sheet (0-indexed after timestamp)
+# Adjust these if your form question order differs.
+COL_MAP = {
+    "timestamp":    0,
+    "code":         1,
+    "survey_type":  2,   # participant answers 'pre' or 'post'
+    # ACT SG
+    "act_a1": 3,  "act_a2": 4,  "act_a3": 5,
+    "act_a4": 6,  "act_a5": 7,  "act_a6": 8,
+    # CMI
+    "cmi_b1": 9,  "cmi_b2": 10, "cmi_b3": 11,
+    "cmi_b4": 12, "cmi_b5": 13, "cmi_b6": 14,
+    # Rosenberg
+    "rsem_c1": 15, "rsem_c2": 16, "rsem_c3": 17, "rsem_c4": 18,
+    "rsem_c5": 19, "rsem_c6": 20, "rsem_c7": 21, "rsem_c8": 22,
+    "rsem_c9": 23, "rsem_c10": 24,
+    # Eudaimonic WB
+    "ewb_d1": 25, "ewb_d2": 26, "ewb_d3": 27,
+    "ewb_d4": 28, "ewb_d5": 29, "ewb_d6": 30,
+    # Open reflection (post only — blank for pre rows)
+    "reflect_e1": 31, "reflect_e2": 32,
+    "reflect_e3": 33, "reflect_e4": 34,
+}
+
+
+def _get_service():
+    json_blob = current_app.config.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+
+    if json_blob:
+        try:
+            info = json.loads(json_blob)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON.") from exc
+
+        creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+    else:
+        key_file = current_app.config["GOOGLE_SERVICE_ACCOUNT_FILE"]
+        creds = service_account.Credentials.from_service_account_file(
+            key_file, scopes=SCOPES
+        )
+
+    return build("sheets", "v4", credentials=creds)
+
+
+def fetch_all_rows(sheet_range="Sheet1!A2:AJ"):
+    """
+    Fetches all response rows from the linked Google Sheet.
+    Skips the header row (A1) by starting at A2.
+    Returns a list of raw row arrays.
+    """
+    service = _get_service()
+    result = (
+        service.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=current_app.config["GOOGLE_SHEET_ID"],
+            range=sheet_range,
+        )
+        .execute()
+    )
+    return result.get("values", [])
+
+
+def parse_row(row, row_index):
+    """
+    Converts a raw sheet row (list of strings) into a dict
+    ready to be stored in SurveyResponse.
+    """
+
+    def safe_float(val):
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
+
+    parsed = {"sheet_row_index": row_index}
+    for field, col in COL_MAP.items():
+        raw = row[col] if col < len(row) else None
+        if field in ("timestamp", "code", "survey_type") or field.startswith("reflect"):
+            parsed[field] = raw
+        else:
+            parsed[field] = safe_float(raw)
+
+    return parsed

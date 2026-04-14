@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: #1a1a1a; }
+
+    .card { width: 640px; margin: 0 auto; padding: 40px; }
+
+    .header { border-bottom: 3px solid #1D9E75; padding-bottom: 20px; margin-bottom: 28px; }
+    .header h1 { font-size: 26px; font-weight: 700; color: #0F6E56; }
+    .header p  { font-size: 13px; color: #555; margin-top: 4px; }
+
+    .participant-code { display: inline-block; background: #E1F5EE; color: #0F6E56;
+      font-weight: 600; font-size: 13px; padding: 4px 12px; border-radius: 20px;
+      margin-top: 8px; }
+
+    /* Radar chart placeholder — actual chart rendered via Chart.js in the
+       live web version; in PDF we use a table of scores instead */
+    .scores-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0; }
+    .score-card  { border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; }
+    .score-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+      color: #888; margin-bottom: 8px; }
+    .score-card .row   { display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; margin-bottom: 4px; }
+    .score-card .row .val { font-weight: 600; }
+    .delta { font-size: 13px; font-weight: 600; }
+    .delta.positive { color: #0F6E56; }
+    .delta.negative { color: #993C1D; }
+    .delta.neutral  { color: #888; }
+
+    .highlights { background: #F1F8FF; border-left: 4px solid #378ADD;
+      border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 20px 0; }
+    .highlights h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+      color: #185FA5; margin-bottom: 10px; }
+    .highlights li { font-size: 14px; color: #1a1a1a; margin-bottom: 6px; list-style: none;
+      padding-left: 16px; position: relative; }
+    .highlights li::before { content: "→"; position: absolute; left: 0; color: #378ADD; }
+
+    .quote { font-style: italic; color: #444; border-top: 1px solid #eee;
+      padding-top: 18px; margin-top: 20px; font-size: 14px; line-height: 1.7; }
+    .quote::before { content: "\201C"; font-size: 28px; color: #ccc; line-height: 0;
+      vertical-align: -10px; margin-right: 4px; }
+
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee;
+      font-size: 11px; color: #aaa; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="header">
+    <h1>Your Growth Card</h1>
+    <p>platform by Impart &nbsp;·&nbsp; {{ cohort }} &nbsp;·&nbsp; Generated {{ generated_at }}</p>
+    <span class="participant-code">{{ code }}</span>
+  </div>
+
+  <div class="scores-grid">
+    {% set scale_info = [
+      ("ACT SG",     "act",  6,  30, "Connection &amp; agency"),
+      ("CMI",        "cmi",  6,  24, "Career readiness"),
+      ("Rosenberg",  "rsem", 0,  30, "Self-esteem"),
+      ("Well-Being", "ewb",  6,  30, "Purpose &amp; meaning"),
+    ] %}
+
+    {% for name, key, lo, hi, subtitle in scale_info %}
+    {% set d = deltas.get("delta_" + key, 0) or 0 %}
+    <div class="score-card">
+      <div class="label">{{ name }} &mdash; {{ subtitle }}</div>
+      <div class="row">
+        <span>Before</span>
+        <span class="val">{{ radar.get(name, {}).get("pre", "—") }}</span>
+      </div>
+      <div class="row">
+        <span>After</span>
+        <span class="val">{{ radar.get(name, {}).get("post", "—") }}</span>
+      </div>
+      <div class="row" style="margin-top:8px; border-top:1px solid #f0f0f0; padding-top:8px;">
+        <span>Change</span>
+        <span class="delta {% if d > 0 %}positive{% elif d < 0 %}negative{% else %}neutral{% endif %}">
+          {% if d > 0 %}+{% endif %}{{ d }}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if highlights %}
+  <div class="highlights">
+    <h3>Meaningful shifts</h3>
+    <ul>
+      {% for h in highlights %}
+      <li>{{ h }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if quote %}
+  <p class="quote">{{ quote }}</p>
+  {% endif %}
+
+  <div class="footer">
+    <span>platform by Impart &amp; Ngee Ann Polytechnic</span>
+    <span>Confidential &mdash; for participant use only</span>
+  </div>
+
+</div>
+</body>
+</html>

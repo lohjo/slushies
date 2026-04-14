@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Create User</title>
+	<style>
+		:root {
+			--bg: #f4f7fb;
+			--panel: #ffffff;
+			--text: #1c2738;
+			--muted: #5e6d84;
+			--accent: #0c6cf2;
+			--success-bg: #e7f8ec;
+			--success-text: #1f7a3e;
+			--danger-bg: #fee7ea;
+			--danger-text: #9d2333;
+			--radius: 14px;
+			--shadow: 0 10px 35px rgba(17, 38, 84, 0.12);
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			background: linear-gradient(160deg, #eef3fb 0%, #f8fbff 60%, #edf6ff 100%);
+			color: var(--text);
+			min-height: 100vh;
+			display: grid;
+			place-items: center;
+			padding: 1.5rem;
+		}
+
+		.auth-card {
+			width: min(460px, 100%);
+			background: var(--panel);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow);
+			padding: 1.75rem;
+		}
+
+		h1 {
+			margin: 0 0 0.5rem;
+			font-size: 1.5rem;
+		}
+
+		.lead {
+			margin: 0 0 1.25rem;
+			color: var(--muted);
+			font-size: 0.95rem;
+		}
+
+		.flash {
+			border-radius: 10px;
+			padding: 0.75rem 0.85rem;
+			margin-bottom: 0.75rem;
+			font-size: 0.92rem;
+		}
+
+		.flash.success {
+			background: var(--success-bg);
+			color: var(--success-text);
+		}
+
+		.flash.danger {
+			background: var(--danger-bg);
+			color: var(--danger-text);
+		}
+
+		label {
+			display: block;
+			margin-bottom: 0.3rem;
+			font-size: 0.9rem;
+			font-weight: 600;
+		}
+
+		input,
+		select {
+			width: 100%;
+			border: 1px solid #d7dfeb;
+			border-radius: 10px;
+			padding: 0.68rem 0.72rem;
+			font-size: 0.95rem;
+			margin-bottom: 1rem;
+			background: #fff;
+		}
+
+		button {
+			width: 100%;
+			border: none;
+			border-radius: 10px;
+			background: var(--accent);
+			color: #fff;
+			font-weight: 600;
+			font-size: 0.96rem;
+			padding: 0.75rem 0.85rem;
+			cursor: pointer;
+		}
+
+		button:hover {
+			filter: brightness(0.95);
+		}
+	</style>
+</head>
+<body>
+	<main class="auth-card">
+		<h1>Create user</h1>
+		<p class="lead">Admins can add additional users for dashboard access.</p>
+
+		{% with messages = get_flashed_messages(with_categories=true) %}
+			{% if messages %}
+				{% for category, message in messages %}
+					<div class="flash {{ category }}">{{ message }}</div>
+				{% endfor %}
+			{% endif %}
+		{% endwith %}
+
+		<form method="post" action="{{ url_for('auth.register') }}">
+			<label for="name">Name</label>
+			<input id="name" name="name" type="text" autocomplete="name" required>
+
+			<label for="email">Email</label>
+			<input id="email" name="email" type="email" autocomplete="email" required>
+
+			<label for="password">Password</label>
+			<input id="password" name="password" type="password" autocomplete="new-password" required>
+
+			<label for="role">Role</label>
+			<select id="role" name="role">
+				<option value="staff">Staff</option>
+				<option value="admin">Admin</option>
+			</select>
+
+			<button type="submit">Create account</button>
+		</form>
+	</main>
+</body>
+</html>

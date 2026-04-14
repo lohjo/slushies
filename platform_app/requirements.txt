@@ -1,0 +1,18 @@
+flask>=3.0
+flask-sqlalchemy>=3.1
+flask-login>=0.6
+flask-bcrypt>=1.0
+flask-migrate>=4.0
+flask-limiter>=3.8
+python-dotenv>=1.0
+gunicorn>=22.0
+
+# Google Sheets API
+google-api-python-client>=2.120
+google-auth>=2.28
+
+# PDF generation
+weasyprint>=62.0
+
+# PostgreSQL driver (comment out if using SQLite only)
+psycopg2-binary>=2.9

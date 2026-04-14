@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Dashboard</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_widget.css') }}">
+</head>
+<body class="dashboard-page">
+	<main class="dashboard-shell">
+		<section class="dashboard-header">
+			<p class="eyebrow">Participant Overview</p>
+			<h1>Program Dashboard</h1>
+			<p class="subtitle">Track responses and growth cards in one glance.</p>
+		</section>
+
+		<section id="react-dashboard-widget" aria-label="Dashboard insights"></section>
+
+		<section class="participants-block" aria-labelledby="participants-heading">
+			<div class="participants-headline">
+				<h2 id="participants-heading">Recent Participants</h2>
+				<a href="{{ url_for('dashboard.export') }}" class="export-link">Export CSV</a>
+			</div>
+
+			<ul class="participant-list">
+				{% for participant in participants %}
+					<li>
+						<a href="{{ url_for('dashboard.participant_detail', code=participant.code) }}">
+							<span class="participant-code">{{ participant.code }}</span>
+							<span class="participant-date">{{ participant.created_at.strftime('%Y-%m-%d') if participant.created_at else 'Unknown date' }}</span>
+						</a>
+					</li>
+				{% else %}
+					<li class="empty-state">No participants available yet.</li>
+				{% endfor %}
+			</ul>
+		</section>
+	</main>
+
+	<script id="dashboard-stats-data" type="application/json">
+		{{ {
+			"totalPre": total_pre,
+			"totalPost": total_post,
+			"cardsIssued": cards_issued,
+			"participants": participants|length
+		}|tojson }}
+	</script>
+	<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+	<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+	<script src="{{ url_for('static', filename='js/dashboard_widget.js') }}"></script>
+</body>
+</html>
