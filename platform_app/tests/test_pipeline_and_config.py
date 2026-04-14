@@ -115,6 +115,16 @@ def test_production_config_rewrites_postgres_scheme(monkeypatch):
     assert app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql://")
 
 
+def test_production_config_accepts_sqlalchemy_database_uri_env(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv(
+        "SQLALCHEMY_DATABASE_URI",
+        "postgresql://user:pass@localhost:5432/platform",
+    )
+    app = create_app("production")
+    assert app.config["SQLALCHEMY_DATABASE_URI"] == "postgresql://user:pass@localhost:5432/platform"
+
+
 def test_fetch_all_rows_uses_configured_range(app_ctx, monkeypatch):
     execute = MagicMock(return_value={"values": [["row"]]})
     get = MagicMock(return_value=MagicMock(execute=execute))

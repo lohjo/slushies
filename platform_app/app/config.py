@@ -14,7 +14,9 @@ class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-    GOOGLE_SHEET_RANGE = os.getenv("GOOGLE_SHEET_RANGE", "Sheet1!A2:AJ")
+    # Default range covers timestamp through reflect_e4 (col AK = index 36).
+    # If the form layout changes, override GOOGLE_SHEET_RANGE in the environment.
+    GOOGLE_SHEET_RANGE = os.getenv("GOOGLE_SHEET_RANGE", "Sheet1!A2:AK")
     GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
     GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv(
         "GOOGLE_SERVICE_ACCOUNT_FILE", "service-account-key.json"
