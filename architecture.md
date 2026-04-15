@@ -561,7 +561,7 @@ For Cloud Run, run Alembic migrations explicitly before deploy. This repository 
 Cloud Build with a migration gate step:
 
 ```bash
-gcloud run jobs execute slushies-migrate --region=asia-southeast1 --wait
+gcloud run jobs execute slushies-migrate --region=europe-west1 --wait
 ```
 
 Then deploy the service revision.
@@ -575,7 +575,7 @@ Then deploy the service revision.
 - [ ] Cloud Run migration job (`slushies-migrate`) succeeds before service deploy
 - [ ] `service-account-key.json` is uploaded as a secret file (not in the repo)
 - [ ] `WEBHOOK_SECRET` is set and matches Apps Script
-- [ ] Apps Script `WEBHOOK_URL` points to the active Cloud Run region (for this project: `https://slushies-411994757215.asia-southeast1.run.app/webhook/form-submit`)
+- [ ] Apps Script `WEBHOOK_URL` points to the active Cloud Run region (for this project: `https://slushies-xcnn5ccpma-ew.a.run.app/webhook/form-submit`)
 - [ ] `instance/cards/` directory exists and is writable
 - [ ] HTTPS is enforced (Railway and Render do this automatically)
 

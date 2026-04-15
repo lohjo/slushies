@@ -21,7 +21,7 @@
  *   X-Webhook-Secret: <WEBHOOK_SECRET>
  */
 
-var WEBHOOK_URL    = "https://<your-cloud-run-or-app-url>";
+var WEBHOOK_URL    = "https://slushies-xcnn5ccpma-ew.a.run.app/webhook/form-submit";
 // SECURITY: replace the placeholder below with your real secret ONLY in the
 // Apps Script editor — never commit a real secret value here.
 var WEBHOOK_SECRET = "<REPLACE_WITH_WEBHOOK_SECRET_IN_APPS_SCRIPT_EDITOR>";
