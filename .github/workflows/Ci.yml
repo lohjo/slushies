@@ -29,7 +29,7 @@ jobs:
           FLASK_ENV: production
           SECRET_KEY: ci-only-not-for-prod-000000000000000000000000000000
           GOOGLE_SHEET_ID: ci-placeholder
-          SQLALCHEMY_DATABASE_URI: sqlite:///:memory:
+          SQLALCHEMY_DATABASE_URI: "sqlite:///:memory:"
         run: |
           python - <<'PYEOF'
           from app import create_app
