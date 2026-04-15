@@ -49,11 +49,6 @@ def process_row(raw_row: list, row_index: int) -> dict:
     elif not participant.cohort and default_cohort:
         participant.cohort = default_cohort
 
-    # ── Deduplicate by sheet row index ───────────────────────────────────────
-    existing = SurveyResponse.query.filter_by(sheet_row_index=row_index).first()
-    if existing:
-        return {"status": "skipped", "reason": "already processed", "code": code}
-
     # ── Compute scores and persist ───────────────────────────────────────────
     totals = compute_all_totals(parsed)
     expected_totals = {
@@ -71,17 +66,50 @@ def process_row(raw_row: list, row_index: int) -> dict:
             ", ".join(missing_scales),
         )
 
+    incoming_complete = all(key in totals for key in expected_totals)
+
+    # ── Deduplicate/backfill by sheet row index ──────────────────────────────
+    existing = SurveyResponse.query.filter_by(sheet_row_index=row_index).first()
+    backfilled = False
+    if existing:
+        if existing.participant_id != participant.id or existing.survey_type != survey_type:
+            current_app.logger.error(
+                "Conflicting row identity for row_index=%s existing(participant_id=%s,survey_type=%s) incoming(participant_id=%s,survey_type=%s)",
+                row_index,
+                existing.participant_id,
+                existing.survey_type,
+                participant.id,
+                survey_type,
+            )
+            return {"status": "failed", "reason": "conflicting row identity", "code": code}
+
+        existing_complete = all(
+            getattr(existing, key) is not None for key in expected_totals
+        )
+        if existing_complete:
+            return {"status": "skipped", "reason": "already processed", "code": code}
+
+        if not incoming_complete:
+            return {"status": "skipped", "reason": "already processed", "code": code}
+
+        response = existing
+        backfilled = True
+    else:
+        response = SurveyResponse(
+            participant_id=participant.id,
+            survey_type=survey_type,
+        )
+        db.session.add(response)
+
     parsed.update(totals)
     parsed.pop("timestamp", None)
     parsed.pop("code", None)
     parsed.pop("survey_type", None)
 
-    response = SurveyResponse(
-        participant_id=participant.id,
-        survey_type=survey_type,
-        **{k: v for k, v in parsed.items() if hasattr(SurveyResponse, k)},
-    )
-    db.session.add(response)
+    for key, value in parsed.items():
+        if hasattr(SurveyResponse, key):
+            setattr(response, key, value)
+
     db.session.flush()
 
     # ── Generate growth card if this is the post-survey ──────────────────────
@@ -143,6 +171,8 @@ def process_row(raw_row: list, row_index: int) -> dict:
         except IntegrityError:
             db.session.rollback()
             return {"status": "skipped", "reason": "already processed", "code": code}
+        if backfilled:
+            return {"status": "post_backfilled_no_pre", "code": code}
         return {"status": "post_saved_no_pre", "code": code}
 
     try:
@@ -151,6 +181,8 @@ def process_row(raw_row: list, row_index: int) -> dict:
         db.session.rollback()
         return {"status": "skipped", "reason": "already processed", "code": code}
 
+    if backfilled:
+        return {"status": "pre_backfilled", "code": code}
     return {"status": "pre_saved", "code": code}
 
 

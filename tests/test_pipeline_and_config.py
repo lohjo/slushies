@@ -64,6 +64,30 @@ def test_process_row_deduplicates_same_sheet_row(app_ctx):
     assert SurveyResponse.query.count() == 1
 
 
+def test_process_row_backfills_partial_existing_row(app_ctx):
+    partial_row = ["2026-04-02 09:00", "AB02", "pre", "4", "", "3"]
+    complete_row = [
+        "2026-04-02 09:00", "AB02", "pre", "25", "M",
+        "4", "4", "4", "4", "4", "4",
+        "3", "3", "3", "3", "3", "3",
+        "3", "3", "3", "3", "3", "3", "3", "3", "3", "3",
+        "4", "4", "4", "4", "4", "4",
+    ]
+
+    first = process_row(raw_row=partial_row, row_index=10)
+    second = process_row(raw_row=complete_row, row_index=10)
+
+    assert first["status"] == "pre_saved"
+    assert second["status"] == "pre_backfilled"
+
+    stored = SurveyResponse.query.filter_by(sheet_row_index=10).first()
+    assert stored is not None
+    assert stored.act_total is not None
+    assert stored.cmi_total is not None
+    assert stored.rsem_total is not None
+    assert stored.ewb_total is not None
+
+
 def test_post_card_failure_rolls_back_and_retry_succeeds(app_ctx, monkeypatch):
     pre_row = ["2026-04-02 09:00", "AB01", "pre", "4", "4", "4", "4", "4", "4"]
     post_row = ["2026-04-03 09:00", "AB01", "post", "5", "5", "5", "5", "5", "5"]

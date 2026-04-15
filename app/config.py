@@ -32,6 +32,12 @@ class BaseConfig:
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
     WEBHOOK_RATE_LIMIT = os.getenv("WEBHOOK_RATE_LIMIT", "30 per minute")
     SHEETS_ALLOW_EMPTY = os.getenv("SHEETS_ALLOW_EMPTY", "false").lower() == "true"
+    PUBLIC_SIGNUP_ENABLED = os.getenv("PUBLIC_SIGNUP_ENABLED", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
     @staticmethod
     def init_app(app):

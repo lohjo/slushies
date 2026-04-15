@@ -1,7 +1,7 @@
 import pytest
 
 from app import create_app, db
-from app.models import Participant, SurveyResponse, User
+from app.models import GrowthCard, Participant, SurveyResponse, User
 
 
 @pytest.fixture()
@@ -85,3 +85,51 @@ def test_list_responses_rejects_non_integer_pagination(client):
 
     assert response.status_code == 400
     assert "limit and offset" in response.get_json()["error"]
+
+
+def test_dashboard_summary_returns_live_snapshot(client):
+    user = User(email="staff@example.com", password="hashed", role="staff")
+    first = Participant(code="AB01", cohort="platform_apr_2026")
+    second = Participant(code="CD02", cohort="platform_apr_2026")
+    db.session.add_all([user, first, second])
+    db.session.flush()
+
+    pre = SurveyResponse(
+        participant_id=first.id,
+        survey_type="pre",
+        sheet_row_index=501,
+        act_total=12,
+    )
+    post = SurveyResponse(
+        participant_id=second.id,
+        survey_type="post",
+        sheet_row_index=502,
+        act_total=15,
+    )
+    card = GrowthCard(participant_id=second.id, delta_act=1.0)
+    db.session.add_all([pre, post, card])
+    db.session.commit()
+
+    _force_login(client, user.id)
+    response = client.get("/api/dashboard/summary?limit=1")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["totalPre"] == 1
+    assert payload["totalPost"] == 1
+    assert payload["cardsIssued"] == 1
+    assert payload["participants"] == 2
+    assert len(payload["recentParticipants"]) == 1
+    assert payload["recentParticipants"][0]["code"] == "CD02"
+
+
+def test_dashboard_summary_rejects_invalid_limit(client):
+    user = User(email="staff@example.com", password="hashed", role="staff")
+    db.session.add(user)
+    db.session.commit()
+
+    _force_login(client, user.id)
+    response = client.get("/api/dashboard/summary?limit=oops")
+
+    assert response.status_code == 400
+    assert "limit must be an integer" in response.get_json()["error"]

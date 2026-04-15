@@ -25,7 +25,7 @@
 				<a href="{{ url_for('dashboard.export') }}" class="export-link">Export CSV</a>
 			</div>
 
-			<ul class="participant-list">
+			<ul class="participant-list" id="participant-list">
 				{% for participant in participants %}
 					<li>
 						<a href="{{ url_for('dashboard.participant_detail', code=participant.code) }}">
@@ -45,7 +45,16 @@
 			"totalPre": total_pre,
 			"totalPost": total_post,
 			"cardsIssued": cards_issued,
-			"participants": participants|length
+			"participants": participants|length,
+			"recentParticipants": [
+				{
+					"code": participant.code,
+					"createdAt": participant.created_at.isoformat() if participant.created_at else None
+				}
+				for participant in participants
+			],
+			"summaryUrl": url_for('api.dashboard_summary', limit=20),
+			"participantDetailTemplate": url_for('dashboard.participant_detail', code='__CODE__')
 		}|tojson }}
 	</script>
 	<script src="{{ url_for('static', filename='js/dashboard_widget.js') }}"></script>

@@ -58,3 +58,56 @@ def test_unauthenticated_route_redirects_to_login(client):
 
     assert response.status_code == 302
     assert "/login" in response.headers["Location"]
+
+
+def test_public_signup_creates_staff_user_and_logs_in(client):
+    response = client.post(
+        "/signup",
+        data={
+            "name": "New User",
+            "email": "new.user@example.com",
+            "password": "secret123",
+            "confirm_password": "secret123",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/dashboard")
+
+    user = User.query.filter_by(email="new.user@example.com").first()
+    assert user is not None
+    assert user.role == "staff"
+
+
+def test_public_signup_rejects_duplicate_email_case_insensitive(client):
+    _seed_user(email="staff@example.com", password="secret123")
+
+    response = client.post(
+        "/signup",
+        data={
+            "name": "Another Staff",
+            "email": "STAFF@example.com",
+            "password": "secret123",
+            "confirm_password": "secret123",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 409
+    assert b"already exists" in response.data
+
+
+def test_login_with_invalid_stored_hash_returns_200_not_500(client):
+    user = User(email="legacy@example.com", password="not-a-bcrypt-hash", role="staff")
+    db.session.add(user)
+    db.session.commit()
+
+    response = client.post(
+        "/login",
+        data={"email": "legacy@example.com", "password": "secret123"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 200
+    assert b"Invalid email or password" in response.data

@@ -4,7 +4,7 @@ Handles all communication with the Google Sheets API v4.
 Authenticates via a Service Account so no user OAuth flow is needed.
 """
 import json
-from flask import current_app
+from flask import current_app, has_app_context
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -107,20 +107,46 @@ def parse_row(row, row_index):
     survey_type = (row[COL_MAP["survey_type"]] if len(row) > COL_MAP["survey_type"] else "")
     survey_type = str(survey_type).strip().lower()
 
+    # Backward compatibility: early forms omitted profile_f1/profile_f2, so ACT
+    # item columns started at index 3 instead of 5 for short/partial rows.
+    legacy_compact_row = (
+        survey_type in ("pre", "post")
+        and len(row) <= (COL_MAP["act_a6"] + 1)
+        and len(row) > COL_MAP["survey_type"]
+        and safe_float(row[COL_MAP["profile_f1"]] if len(row) > COL_MAP["profile_f1"] else None) is not None
+    )
+
     # Guardrail: Google Sheets API omits trailing empty cells. For pre/post rows,
     # we still expect columns through ewb_d6 (index 32) to exist.
     min_expected_len = COL_MAP["ewb_d6"] + 1 if survey_type in ("pre", "post") else COL_MAP["survey_type"] + 1
     if len(row) < min_expected_len:
-        current_app.logger.warning(
-            "Row %s has %s cols; expected >= %s for survey_type=%s. Check GOOGLE_SHEET_RANGE/COL_MAP/form ordering.",
-            row_index,
-            len(row),
-            min_expected_len,
-            survey_type or "unknown",
+        message = (
+            "Row %s has %s cols; expected >= %s for survey_type=%s. "
+            "Check GOOGLE_SHEET_RANGE/COL_MAP/form ordering."
         )
+        if has_app_context():
+            current_app.logger.warning(
+                message,
+                row_index,
+                len(row),
+                min_expected_len,
+                survey_type or "unknown",
+            )
 
     parsed = {"sheet_row_index": row_index}
     for field, col in COL_MAP.items():
+        if legacy_compact_row:
+            if field in ("profile_f1", "profile_f2"):
+                raw = None
+                if field in ("timestamp", "code", "survey_type") or field.startswith("reflect"):
+                    parsed[field] = raw
+                else:
+                    parsed[field] = safe_float(raw)
+                continue
+
+            if field not in ("timestamp", "code", "survey_type"):
+                col = col - 2
+
         raw = row[col] if col < len(row) else None
         if field in ("timestamp", "code", "survey_type") or field.startswith("reflect"):
             parsed[field] = raw

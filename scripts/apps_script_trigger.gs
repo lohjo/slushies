@@ -21,10 +21,36 @@
  *   X-Webhook-Secret: <WEBHOOK_SECRET>
  */
 
-var WEBHOOK_URL    = "https://slushies-xcnn5ccpma-ew.a.run.app/webhook/form-submit";
-// SECURITY: replace the placeholder below with your real secret ONLY in the
-// Apps Script editor — never commit a real secret value here.
-var WEBHOOK_SECRET = "<REPLACE_WITH_WEBHOOK_SECRET_IN_APPS_SCRIPT_EDITOR>";
+var WEBHOOK_URL = "https://slushies-xcnn5ccpma-ew.a.run.app/webhook/form-submit";
+// Optional fallback for local/manual testing only. Prefer Script Properties.
+var WEBHOOK_SECRET = "";
+
+// Store production config in Apps Script > Project Settings > Script properties:
+// - WEBHOOK_URL
+// - WEBHOOK_SECRET
+function setupWebhookConfig(url, secret) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty("WEBHOOK_URL", String(url || "").trim());
+  props.setProperty("WEBHOOK_SECRET", String(secret || "").trim());
+}
+
+function getWebhookUrl_() {
+  var fromProps = PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+  var effective = String(fromProps || WEBHOOK_URL || "").trim();
+  if (!effective) {
+    throw new Error("Missing WEBHOOK_URL. Set Script Property WEBHOOK_URL or file constant WEBHOOK_URL.");
+  }
+  return effective;
+}
+
+function getWebhookSecret_() {
+  var fromProps = PropertiesService.getScriptProperties().getProperty("WEBHOOK_SECRET");
+  var effective = String(fromProps || WEBHOOK_SECRET || "").trim();
+  if (!effective || effective.indexOf("<REPLACE_WITH_WEBHOOK_SECRET") === 0) {
+    throw new Error("Missing WEBHOOK_SECRET. Set Script Property WEBHOOK_SECRET.");
+  }
+  return effective;
+}
 
 function onFormSubmit(e) {
   if (!e) {
@@ -33,15 +59,19 @@ function onFormSubmit(e) {
     );
   }
 
-  var values = normalizeSubmissionValues_(e);
+  // Prefer the actual submitted row from event range when available.
+  var rowIndex = getRowIndexFromEvent_(e);
+
+  var values = normalizeSubmissionValues_(e, rowIndex);
   if (!values || !values.length) {
     throw new Error(
       "No submitted values found on trigger event (expected e.values or e.namedValues)."
     );
   }
 
-  // Prefer the actual submitted row from event range when available.
-  var rowIndex = getRowIndexFromEvent_(e);
+  var code = values.length > 1 ? values[1] : "";
+  var surveyType = values.length > 2 ? values[2] : "";
+  Logger.log("Webhook payload row_index=" + rowIndex + " code=" + code + " survey_type=" + surveyType);
 
   var payload = JSON.stringify({
     row_index: rowIndex,
@@ -52,11 +82,11 @@ function onFormSubmit(e) {
     method:      "post",
     contentType: "application/json",
     payload:     payload,
-    headers:     { "X-Webhook-Secret": WEBHOOK_SECRET },
+    headers:     { "X-Webhook-Secret": getWebhookSecret_() },
     muteHttpExceptions: true,
   };
 
-  var response = UrlFetchApp.fetch(WEBHOOK_URL, options);
+  var response = UrlFetchApp.fetch(getWebhookUrl_(), options);
   Logger.log("Webhook response: " + response.getContentText());
 }
 
@@ -72,7 +102,18 @@ function getRowIndexFromEvent_(e) {
   return getLastRowIndex_();
 }
 
-function normalizeSubmissionValues_(e) {
+function normalizeSubmissionValues_(e, rowIndex) {
+  // Most reliable source: read exact sheet row to preserve order and trailing empties.
+  if (e.range && e.range.getSheet && typeof e.range.getSheet === "function") {
+    var sheet = e.range.getSheet();
+    var effectiveRow = rowIndex || e.range.getRow();
+    var lastCol = sheet.getLastColumn();
+    var exactRow = sheet.getRange(effectiveRow, 1, 1, lastCol).getValues()[0];
+    if (exactRow && exactRow.length) {
+      return exactRow;
+    }
+  }
+
   if (Array.isArray(e.values) && e.values.length) {
     return e.values;
   }

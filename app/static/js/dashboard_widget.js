@@ -1,20 +1,24 @@
 (function () {
     const mountNode = document.getElementById("react-dashboard-widget");
     const payloadNode = document.getElementById("dashboard-stats-data");
+    const participantListNode = document.getElementById("participant-list");
 
     if (!mountNode || !payloadNode) {
         return;
     }
 
-    let data = {
+    let state = {
         totalPre: 0,
         totalPost: 0,
         cardsIssued: 0,
         participants: 0,
+        recentParticipants: [],
+        summaryUrl: "",
+        participantDetailTemplate: "/dashboard/participant/__CODE__",
     };
 
     try {
-        data = Object.assign(data, JSON.parse(payloadNode.textContent || "{}"));
+        state = Object.assign(state, JSON.parse(payloadNode.textContent || "{}"));
     } catch (error) {
         console.error("Failed to parse dashboard data", error);
     }
@@ -37,47 +41,131 @@
         return item;
     }
 
-    const completionRate = data.totalPre
-        ? Math.round((data.totalPost / data.totalPre) * 100)
-        : 0;
+    function formatDate(value) {
+        if (!value) {
+            return "Unknown date";
+        }
 
-    const section = createElement("section", "editorial-widget");
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+            return "Unknown date";
+        }
+        return parsed.toISOString().slice(0, 10);
+    }
 
-    const intro = createElement("div", "widget-intro");
-    intro.appendChild(createElement("p", "widget-kicker", "Live Snapshot"));
-    intro.appendChild(createElement("h2", "", "Response Momentum"));
-    intro.appendChild(
-        createElement(
-            "p",
-            "widget-copy",
-            "A concise pulse-check on survey completion and card delivery."
-        )
-    );
-    section.appendChild(intro);
+    function buildParticipantUrl(code) {
+        const encoded = encodeURIComponent(code);
+        return String(state.participantDetailTemplate || "").replace("__CODE__", encoded);
+    }
 
-    const grid = createElement("div", "widget-grid");
-    grid.appendChild(createStatItem("Pre Surveys", data.totalPre, "neutral"));
-    grid.appendChild(createStatItem("Post Surveys", data.totalPost, "calm"));
-    grid.appendChild(createStatItem("Cards Issued", data.cardsIssued, "warm"));
-    grid.appendChild(createStatItem("Participants", data.participants, "neutral"));
-    section.appendChild(grid);
+    function renderParticipants() {
+        if (!participantListNode) {
+            return;
+        }
 
-    const band = createElement("div", "completion-band");
-    band.appendChild(createElement("p", "", "Completion Rate"));
-    band.appendChild(createElement("strong", "", completionRate + "%"));
+        const participants = Array.isArray(state.recentParticipants)
+            ? state.recentParticipants
+            : [];
 
-    const meter = createElement("div", "completion-meter");
-    meter.setAttribute("role", "progressbar");
-    meter.setAttribute("aria-valuemin", "0");
-    meter.setAttribute("aria-valuemax", "100");
-    meter.setAttribute("aria-valuenow", String(completionRate));
-    meter.setAttribute("aria-label", "Post survey completion rate");
+        if (!participants.length) {
+            const emptyItem = createElement("li", "empty-state", "No participants available yet.");
+            participantListNode.replaceChildren(emptyItem);
+            return;
+        }
 
-    const fill = createElement("span");
-    fill.style.width = Math.max(0, Math.min(completionRate, 100)) + "%";
-    meter.appendChild(fill);
-    band.appendChild(meter);
-    section.appendChild(band);
+        const items = participants.map(function (participant) {
+            const li = createElement("li");
+            const link = createElement("a");
+            link.href = buildParticipantUrl(participant.code);
 
-    mountNode.replaceChildren(section);
+            link.appendChild(createElement("span", "participant-code", participant.code));
+            link.appendChild(
+                createElement("span", "participant-date", formatDate(participant.createdAt))
+            );
+
+            li.appendChild(link);
+            return li;
+        });
+
+        participantListNode.replaceChildren.apply(participantListNode, items);
+    }
+
+    function renderWidget() {
+        const completionRate = state.totalPre
+            ? Math.round((state.totalPost / state.totalPre) * 100)
+            : 0;
+
+        const section = createElement("section", "editorial-widget");
+
+        const intro = createElement("div", "widget-intro");
+        intro.appendChild(createElement("p", "widget-kicker", "Live Snapshot"));
+        intro.appendChild(createElement("h2", "", "Response Momentum"));
+        intro.appendChild(
+            createElement(
+                "p",
+                "widget-copy",
+                "A concise pulse-check on survey completion and card delivery."
+            )
+        );
+        section.appendChild(intro);
+
+        const grid = createElement("div", "widget-grid");
+        grid.appendChild(createStatItem("Pre Surveys", state.totalPre, "neutral"));
+        grid.appendChild(createStatItem("Post Surveys", state.totalPost, "calm"));
+        grid.appendChild(createStatItem("Cards Issued", state.cardsIssued, "warm"));
+        grid.appendChild(createStatItem("Participants", state.participants, "neutral"));
+        section.appendChild(grid);
+
+        const band = createElement("div", "completion-band");
+        band.appendChild(createElement("p", "", "Completion Rate"));
+        band.appendChild(createElement("strong", "", completionRate + "%"));
+
+        const meter = createElement("div", "completion-meter");
+        meter.setAttribute("role", "progressbar");
+        meter.setAttribute("aria-valuemin", "0");
+        meter.setAttribute("aria-valuemax", "100");
+        meter.setAttribute("aria-valuenow", String(completionRate));
+        meter.setAttribute("aria-label", "Post survey completion rate");
+
+        const fill = createElement("span");
+        fill.style.width = Math.max(0, Math.min(completionRate, 100)) + "%";
+        meter.appendChild(fill);
+        band.appendChild(meter);
+        section.appendChild(band);
+
+        mountNode.replaceChildren(section);
+    }
+
+    function applyServerState(nextState) {
+        state = Object.assign({}, state, nextState || {});
+        renderWidget();
+        renderParticipants();
+    }
+
+    async function refreshLiveData() {
+        if (!state.summaryUrl) {
+            return;
+        }
+
+        try {
+            const response = await fetch(state.summaryUrl, {
+                credentials: "same-origin",
+                headers: {
+                    Accept: "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const payload = await response.json();
+            applyServerState(payload);
+        } catch (error) {
+            console.error("Live dashboard refresh failed", error);
+        }
+    }
+
+    applyServerState(state);
+    window.setInterval(refreshLiveData, 5000);
 })();

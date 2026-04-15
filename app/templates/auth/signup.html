@@ -3,19 +3,18 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Login</title>
+	<title>Sign Up</title>
 	<style>
 		:root {
-			color-scheme: light;
 			--bg: #f4f7fb;
 			--panel: #ffffff;
 			--text: #1c2738;
 			--muted: #5e6d84;
 			--accent: #0c6cf2;
+			--success-bg: #e7f8ec;
+			--success-text: #1f7a3e;
 			--danger-bg: #fee7ea;
 			--danger-text: #9d2333;
-			--info-bg: #e8f0ff;
-			--info-text: #1845a5;
 			--radius: 14px;
 			--shadow: 0 10px 35px rgba(17, 38, 84, 0.12);
 		}
@@ -36,7 +35,7 @@
 		}
 
 		.auth-card {
-			width: min(420px, 100%);
+			width: min(460px, 100%);
 			background: var(--panel);
 			border-radius: var(--radius);
 			box-shadow: var(--shadow);
@@ -61,14 +60,14 @@
 			font-size: 0.92rem;
 		}
 
+		.flash.success {
+			background: var(--success-bg);
+			color: var(--success-text);
+		}
+
 		.flash.danger {
 			background: var(--danger-bg);
 			color: var(--danger-text);
-		}
-
-		.flash.info {
-			background: var(--info-bg);
-			color: var(--info-text);
 		}
 
 		label {
@@ -78,8 +77,7 @@
 			font-weight: 600;
 		}
 
-		input[type="email"],
-		input[type="password"] {
+		input {
 			width: 100%;
 			border: 1px solid #d7dfeb;
 			border-radius: 10px;
@@ -87,15 +85,6 @@
 			font-size: 0.95rem;
 			margin-bottom: 1rem;
 			background: #fff;
-		}
-
-		.remember {
-			display: flex;
-			align-items: center;
-			gap: 0.45rem;
-			margin-bottom: 1rem;
-			color: var(--muted);
-			font-size: 0.9rem;
 		}
 
 		button {
@@ -117,8 +106,8 @@
 </head>
 <body>
 	<main class="auth-card">
-		<h1>Sign in</h1>
-		<p class="lead">Use your account details to access the dashboard.</p>
+		<h1>Create account</h1>
+		<p class="lead">Create a staff account to access dashboard and sync tools.</p>
 
 		{% with messages = get_flashed_messages(with_categories=true) %}
 			{% if messages %}
@@ -128,26 +117,25 @@
 			{% endif %}
 		{% endwith %}
 
-		<form method="post" action="{{ url_for('auth.login', next=request.args.get('next', '')) }}">
+		<form method="post" action="{{ url_for('auth.signup') }}">
+			<label for="name">Name</label>
+			<input id="name" name="name" type="text" autocomplete="name" required>
+
 			<label for="email">Email</label>
 			<input id="email" name="email" type="email" autocomplete="email" required>
 
 			<label for="password">Password</label>
-			<input id="password" name="password" type="password" autocomplete="current-password" required>
+			<input id="password" name="password" type="password" autocomplete="new-password" required>
 
-			<label class="remember" for="remember">
-				<input id="remember" name="remember" type="checkbox">
-				Keep me signed in
-			</label>
+			<label for="confirm_password">Confirm password</label>
+			<input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" required>
 
-			<button type="submit">Log in</button>
+			<button type="submit">Create account</button>
 		</form>
 
-		{% if config.PUBLIC_SIGNUP_ENABLED %}
-			<p class="lead" style="margin-top: 1rem; margin-bottom: 0;">
-				Need access? <a href="{{ url_for('auth.signup') }}">Create an account</a>
-			</p>
-		{% endif %}
+		<p class="lead" style="margin-top: 1rem; margin-bottom: 0;">
+			Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+		</p>
 	</main>
 </body>
 </html>

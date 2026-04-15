@@ -22,6 +22,40 @@ def sync():
     return jsonify({"total": len(results), "processed": len(processed), "detail": results})
 
 
+@api_bp.route("/dashboard/summary", methods=["GET"])
+@login_required
+def dashboard_summary():
+    """Return dashboard counters plus latest participants for live polling."""
+    try:
+        limit = int(request.args.get("limit", 20))
+    except ValueError:
+        return jsonify({"error": "limit must be an integer"}), 400
+
+    limit = max(1, min(limit, 100))
+    participants = (
+        Participant.query.order_by(Participant.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    payload = {
+        "totalPre": SurveyResponse.query.filter_by(survey_type="pre").count(),
+        "totalPost": SurveyResponse.query.filter_by(survey_type="post").count(),
+        "cardsIssued": GrowthCard.query.count(),
+        "participants": Participant.query.count(),
+        "recentParticipants": [
+            {
+                "code": participant.code,
+                "createdAt": (
+                    participant.created_at.isoformat() if participant.created_at else None
+                ),
+            }
+            for participant in participants
+        ],
+    }
+    return jsonify(payload)
+
+
 # ─── Participants CRUD ────────────────────────────────────────────────────────
 
 @api_bp.route("/participants", methods=["GET"])
