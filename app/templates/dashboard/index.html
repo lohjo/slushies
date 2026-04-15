@@ -41,18 +41,16 @@
 	</main>
 
 	<script id="dashboard-stats-data" type="application/json">
+		{% set recent = [] %}
+		{% for p in participants %}
+			{% set _ = recent.append({"code": p.code, "createdAt": p.created_at.isoformat() if p.created_at else None}) %}
+		{% endfor %}
 		{{ {
 			"totalPre": total_pre,
 			"totalPost": total_post,
 			"cardsIssued": cards_issued,
 			"participants": participants|length,
-			"recentParticipants": [
-				{
-					"code": participant.code,
-					"createdAt": participant.created_at.isoformat() if participant.created_at else None
-				}
-				for participant in participants
-			],
+			"recentParticipants": recent,
 			"summaryUrl": url_for('api.dashboard_summary', limit=20),
 			"participantDetailTemplate": url_for('dashboard.participant_detail', code='__CODE__')
 		}|tojson }}

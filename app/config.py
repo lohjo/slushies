@@ -90,6 +90,13 @@ class ProductionConfig(BaseConfig):
                 stacklevel=2,
             )
 
+        # FIX: Cloud Run filesystem is ephemeral and /app/instance may not survive
+        # restarts or multi-instance routing. Use /tmp/cards which is always
+        # writable and avoids permission issues with the appuser in the container.
+        # Note: cards are regenerated on next sync if file is missing.
+        cards_dir = os.getenv("CARDS_OUTPUT_DIR", "/tmp/cards")
+        app.config["CARDS_OUTPUT_DIR"] = cards_dir
+
 
 class TestingConfig(BaseConfig):
     TESTING = True

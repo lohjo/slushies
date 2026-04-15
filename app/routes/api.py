@@ -1,6 +1,7 @@
 import csv
 import io
-from flask import Blueprint, jsonify, request, Response, send_file
+import os
+from flask import Blueprint, jsonify, request, Response, send_file, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import func
 
@@ -27,11 +28,11 @@ def sync():
 def dashboard_summary():
     """Return dashboard counters plus latest participants for live polling."""
     try:
-        limit = int(request.args.get("limit", 20))
+        limit = int(request.args.get("limit", 50))
     except ValueError:
         return jsonify({"error": "limit must be an integer"}), 400
 
-    limit = max(1, min(limit, 100))
+    limit = max(1, min(limit, 500))
     participants = (
         Participant.query.order_by(Participant.created_at.desc())
         .limit(limit)
@@ -147,8 +148,49 @@ def delete_response(id):
 def download_card(code):
     participant = Participant.query.filter_by(code=code).first_or_404()
     card = GrowthCard.query.filter_by(participant_id=participant.id).first_or_404()
-    return send_file(card.file_path, as_attachment=True,
-                     download_name=f"growth_card_{code}.pdf")
+
+    # FIX: On Cloud Run, /tmp/cards is ephemeral. File may be gone after restart
+    # or if served by a different instance. Attempt re-generation from DB data.
+    if not card.file_path or not os.path.exists(card.file_path):
+        pre = SurveyResponse.query.filter_by(
+            participant_id=participant.id, survey_type="pre"
+        ).first()
+        post = SurveyResponse.query.filter_by(
+            participant_id=participant.id, survey_type="post"
+        ).first()
+
+        if pre and post:
+            try:
+                from app.services.card_service import generate_card
+                from app.services.score_service import compute_change_scores
+
+                deltas = compute_change_scores(pre.to_dict(), post.to_dict())
+                card_path = generate_card(
+                    participant_code=code,
+                    pre=pre.to_dict(),
+                    post=post.to_dict(),
+                    deltas=deltas,
+                    cohort=participant.cohort or "platform",
+                )
+                card.file_path = card_path
+                db.session.commit()
+            except Exception:
+                current_app.logger.exception(
+                    "Card re-generation failed for %s during download", code
+                )
+                return jsonify({
+                    "error": "Card file unavailable. Trigger /api/sync to regenerate."
+                }), 503
+        else:
+            return jsonify({
+                "error": "Card file missing. Pre or post survey data not found."
+            }), 404
+
+    return send_file(
+        card.file_path,
+        as_attachment=True,
+        download_name=f"growth_card_{code}.pdf",
+    )
 
 
 # ─── CSV Export ───────────────────────────────────────────────────────────────
@@ -206,3 +248,6 @@ def export_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=platform_responses.csv"},
     )
+
+
+# Need current_app for logger in download_card

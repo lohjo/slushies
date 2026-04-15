@@ -17,15 +17,20 @@ def _verify_secret(req):
     """
     Compare the X-Webhook-Secret header against WEBHOOK_SECRET in config.
     Returns True if secrets match or if no secret is configured (dev mode).
+ 
+    FIX: strip() both values — Cloud Run env vars pasted via GCP console
+    can append a trailing newline, causing compare_digest to always fail.
+    We strip only the config value (our own data); the header value is
+    user-controlled so we preserve it and strip only leading/trailing whitespace.
     """
-    expected = current_app.config.get("WEBHOOK_SECRET", "")
+    expected = (current_app.config.get("WEBHOOK_SECRET") or "").strip()
     if not expected:
         env = os.getenv("FLASK_ENV", "development").lower()
         if env == "production":
             current_app.logger.error("WEBHOOK_SECRET is missing in production.")
             return False
         return True   # skip verification in development
-    provided = req.headers.get("X-Webhook-Secret", "")
+    provided = req.headers.get("X-Webhook-Secret", "").strip()
     return hmac.compare_digest(expected, provided)
 
 

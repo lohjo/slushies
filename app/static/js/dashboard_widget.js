@@ -23,6 +23,11 @@
         console.error("Failed to parse dashboard data", error);
     }
 
+    // FIX: Track whether participant list was already populated server-side.
+    // Only allow JS to update the list after a full-data poll response.
+    // Prevents poll (limit=50) from replacing a larger server-rendered list.
+    let participantListPopulatedByServer = (state.recentParticipants || []).length > 0;
+
     function createElement(tagName, className, textValue) {
         const element = document.createElement(tagName);
         if (className) {
@@ -68,8 +73,13 @@
             : [];
 
         if (!participants.length) {
-            const emptyItem = createElement("li", "empty-state", "No participants available yet.");
-            participantListNode.replaceChildren(emptyItem);
+            // FIX: Don't wipe the server-rendered list if poll returns empty.
+            // Empty can mean the request failed or poll ran before DB populated.
+            // Only render empty state if we never had server-side data either.
+            if (!participantListPopulatedByServer) {
+                const emptyItem = createElement("li", "empty-state", "No participants available yet.");
+                participantListNode.replaceChildren(emptyItem);
+            }
             return;
         }
 
@@ -88,6 +98,8 @@
         });
 
         participantListNode.replaceChildren.apply(participantListNode, items);
+        // Once JS has rendered the list from real data, allow future updates
+        participantListPopulatedByServer = true;
     }
 
     function renderWidget() {
@@ -156,16 +168,46 @@
             });
 
             if (!response.ok) {
+                // Session expired or server error — stop polling silently.
+                // Don't wipe the existing UI.
                 return;
             }
 
             const payload = await response.json();
-            applyServerState(payload);
+
+            // FIX: Only update participant list from poll if poll returned data.
+            // Avoids limit-50 poll replacing a server-rendered list of 200+ participants.
+            // Stats (counters) always update from poll. List only updates when non-empty.
+            if (!payload.recentParticipants || payload.recentParticipants.length === 0) {
+                // Keep current list; only update counters
+                const statsOnly = {
+                    totalPre: payload.totalPre,
+                    totalPost: payload.totalPost,
+                    cardsIssued: payload.cardsIssued,
+                    participants: payload.participants,
+                    recentParticipants: state.recentParticipants,
+                };
+                applyServerState(statsOnly);
+            } else {
+                applyServerState(payload);
+            }
         } catch (error) {
             console.error("Live dashboard refresh failed", error);
         }
     }
 
     applyServerState(state);
-    window.setInterval(refreshLiveData, 5000);
+
+    // FIX: Use visibilitychange to pause polling when tab hidden.
+    // Reduces unnecessary requests and prevents stale-data overwrites on refocus.
+    let pollInterval = window.setInterval(refreshLiveData, 5000);
+
+    document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+            window.clearInterval(pollInterval);
+        } else {
+            refreshLiveData(); // immediate refresh on tab focus
+            pollInterval = window.setInterval(refreshLiveData, 5000);
+        }
+    });
 })();
