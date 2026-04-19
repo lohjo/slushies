@@ -4,6 +4,7 @@ Handles all communication with the Google Sheets API v4.
 Authenticates via a Service Account so no user OAuth flow is needed.
 """
 import json
+import os
 from flask import current_app, has_app_context
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -49,21 +50,16 @@ COL_MAP = {
 
 
 def _get_service():
-    json_blob = current_app.config.get("GOOGLE_SERVICE_ACCOUNT_JSON")
-
-    if json_blob:
-        try:
-            info = json.loads(json_blob)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON.") from exc
-
-        creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
-    else:
-        key_file = current_app.config["GOOGLE_SERVICE_ACCOUNT_FILE"]
-        creds = service_account.Credentials.from_service_account_file(
-            key_file, scopes=SCOPES
+    json_str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if json_str:
+        info = json.loads(json_str)
+        creds = service_account.Credentials.from_service_account_info(
+            info, scopes=SCOPES
         )
-
+    else:
+        creds = service_account.Credentials.from_service_account_file(
+            current_app.config["GOOGLE_SERVICE_ACCOUNT_FILE"], scopes=SCOPES
+        )
     return build("sheets", "v4", credentials=creds)
 
 
@@ -136,14 +132,12 @@ def parse_row(row, row_index):
     parsed = {"sheet_row_index": row_index}
     for field, col in COL_MAP.items():
         if legacy_compact_row:
+            # Profile columns did not exist in early form layout — emit None.
             if field in ("profile_f1", "profile_f2"):
-                raw = None
-                if field in ("timestamp", "code", "survey_type") or field.startswith("reflect"):
-                    parsed[field] = raw
-                else:
-                    parsed[field] = safe_float(raw)
+                parsed[field] = None
                 continue
 
+            # All other non-identity columns shift left by 2.
             if field not in ("timestamp", "code", "survey_type"):
                 col = col - 2
 

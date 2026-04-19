@@ -45,7 +45,15 @@ def process_row(raw_row: list, row_index: int) -> dict:
     if not participant:
         participant = Participant(code=code, cohort=default_cohort)
         db.session.add(participant)
-        db.session.flush()   # get participant.id before commit
+        try:
+            db.session.flush()   # get participant.id before commit
+        except IntegrityError:
+            # Another concurrent request inserted the same code between our
+            # SELECT and this INSERT (race on simultaneous webhook fires).
+            db.session.rollback()
+            participant = Participant.query.filter_by(code=code).first()
+            if not participant:
+                return {"status": "failed", "reason": "participant upsert conflict", "code": code}
     elif not participant.cohort and default_cohort:
         participant.cohort = default_cohort
 
