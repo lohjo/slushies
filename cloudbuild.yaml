@@ -29,10 +29,24 @@ steps:
       - '--all-tags'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}'
 
+  # Fail fast with a clear error if the migration gate job is missing.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: check-migrate-job
+    waitFor: ['push']
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run jobs describe "${_MIGRATE_JOB}" --region="${_REGION}" >/dev/null 2>&1 || {
+          echo "Cloud Run Job '${_MIGRATE_JOB}' not found in region '${_REGION}'."
+          echo "Create it first, then retry Cloud Build."
+          exit 1
+        }
+
   # Run database migrations before rolling a new revision
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: migrate
-    waitFor: ['push']
+    waitFor: ['check-migrate-job']
     entrypoint: gcloud
     args:
       - run
@@ -60,4 +74,5 @@ steps:
       - '--timeout=300'
 
 images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${BUILD_ID}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest'

@@ -1,0 +1,4 @@
+gcloud run jobs create slushies-migrate \
+  --region=europe-west1 \
+  --image=europe-west1-docker.pkg.dev/precise-dragon-491422-e8 /slushies/slushies:latest \
+  --command=flask --args=db,upgrade
