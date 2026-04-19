@@ -16,3 +16,4 @@ instance
 .env
 .env.*
 !.env.example
+.claude

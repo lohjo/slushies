@@ -19,3 +19,5 @@ instance/
 .mypy_cache/
 .coverage
 htmlcov/
+
+.claude
