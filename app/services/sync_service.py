@@ -112,6 +112,20 @@ def process_row(raw_row: list, row_index: int) -> dict:
 
     db.session.flush()
 
+    # ── Commit participant + survey response before card generation ───────────
+    # Card generation (WeasyPrint) can fail independently; survey data must be
+    # persisted regardless so submissions are never lost on a render error.
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return {"status": "skipped", "reason": "already processed", "code": code}
+
+    if backfilled:
+        saved_status = "post_backfilled_no_pre" if survey_type == "post" else "pre_backfilled"
+    else:
+        saved_status = "post_saved_no_pre" if survey_type == "post" else "pre_saved"
+
     # ── Generate growth card if this is the post-survey ──────────────────────
     if survey_type == "post":
         pre_response = SurveyResponse.query.filter_by(
@@ -134,10 +148,9 @@ def process_row(raw_row: list, row_index: int) -> dict:
                     cohort=participant.cohort or "platform",
                 )
             except Exception:
-                db.session.rollback()
                 current_app.logger.exception("Card generation failed for row %s (%s)", row_index, code)
                 return {
-                    "status": "failed",
+                    "status": "post_saved_card_failed",
                     "reason": "card generation failed",
                     "code": code,
                     "row_index": row_index,
@@ -160,30 +173,12 @@ def process_row(raw_row: list, row_index: int) -> dict:
             try:
                 db.session.commit()
             except IntegrityError:
-                # Concurrent webhook retries can race; DB uniqueness is the final guardrail.
                 db.session.rollback()
                 return {"status": "skipped", "reason": "already processed", "code": code}
 
             return {"status": "card_generated", "code": code, "path": card_path}
 
-        try:
-            db.session.commit()
-        except IntegrityError:
-            db.session.rollback()
-            return {"status": "skipped", "reason": "already processed", "code": code}
-        if backfilled:
-            return {"status": "post_backfilled_no_pre", "code": code}
-        return {"status": "post_saved_no_pre", "code": code}
-
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return {"status": "skipped", "reason": "already processed", "code": code}
-
-    if backfilled:
-        return {"status": "pre_backfilled", "code": code}
-    return {"status": "pre_saved", "code": code}
+    return {"status": saved_status, "code": code}
 
 
 def sync_all_from_sheets() -> list:

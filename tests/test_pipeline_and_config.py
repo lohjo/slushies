@@ -88,7 +88,8 @@ def test_process_row_backfills_partial_existing_row(app_ctx):
     assert stored.ewb_total is not None
 
 
-def test_post_card_failure_rolls_back_and_retry_succeeds(app_ctx, monkeypatch):
+def test_post_card_failure_preserves_survey_response(app_ctx, monkeypatch):
+    """Card render failure must not roll back the survey response."""
     pre_row = ["2026-04-02 09:00", "AB01", "pre", "4", "4", "4", "4", "4", "4"]
     post_row = ["2026-04-03 09:00", "AB01", "post", "5", "5", "5", "5", "5", "5"]
 
@@ -99,18 +100,13 @@ def test_post_card_failure_rolls_back_and_retry_succeeds(app_ctx, monkeypatch):
     )
     monkeypatch.setitem(sys.modules, "app.services.card_service", failing_card_service)
 
-    failed = process_row(raw_row=post_row, row_index=3)
-    assert failed["status"] == "failed"
-    assert SurveyResponse.query.filter_by(sheet_row_index=3).first() is None
-
-    success_card_service = types.SimpleNamespace(
-        generate_card=lambda **kwargs: "instance/cards/retried.pdf"
-    )
-    monkeypatch.setitem(sys.modules, "app.services.card_service", success_card_service)
-
-    retried = process_row(raw_row=post_row, row_index=3)
-    assert retried["status"] == "card_generated"
+    result = process_row(raw_row=post_row, row_index=3)
+    assert result["status"] == "post_saved_card_failed"
+    # Survey data must be committed even though card generation failed
     assert SurveyResponse.query.filter_by(sheet_row_index=3).first() is not None
+    # Dedup: replaying the same row is a no-op now that the response is saved
+    retried = process_row(raw_row=post_row, row_index=3)
+    assert retried["status"] == "skipped"
 
 
 def test_export_csv_includes_delta_columns(app_ctx, client):

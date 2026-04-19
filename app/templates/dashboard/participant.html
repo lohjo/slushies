@@ -171,9 +171,9 @@
 						<dt>Delta EWB</dt>
 						<dd class="delta {% if card.delta_ewb and card.delta_ewb > 0 %}positive{% elif card.delta_ewb and card.delta_ewb < 0 %}negative{% endif %}">{{ card.delta_ewb if card.delta_ewb is not none else "-" }}</dd>
 					</dl>
-					{% if card.file_path %}
-						<p><strong>File:</strong> {{ card.file_path }}</p>
-					{% endif %}
+					<p style="margin-top:0.75rem;">
+						<a href="{{ url_for('api.download_card', code=participant.code) }}" class="download-link" style="color:var(--accent);font-weight:600;text-decoration:none;">Download Growth Card (PDF)</a>
+					</p>
 				{% else %}
 					<p class="empty">No growth card generated yet.</p>
 				{% endif %}

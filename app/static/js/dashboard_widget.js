@@ -175,22 +175,23 @@
 
             const payload = await response.json();
 
-            // FIX: Only update participant list from poll if poll returned data.
-            // Avoids limit-50 poll replacing a server-rendered list of 200+ participants.
-            // Stats (counters) always update from poll. List only updates when non-empty.
-            if (!payload.recentParticipants || payload.recentParticipants.length === 0) {
-                // Keep current list; only update counters
-                const statsOnly = {
-                    totalPre: payload.totalPre,
-                    totalPost: payload.totalPost,
-                    cardsIssued: payload.cardsIssued,
-                    participants: payload.participants,
-                    recentParticipants: state.recentParticipants,
-                };
-                applyServerState(statsOnly);
-            } else {
-                applyServerState(payload);
-            }
+            // Prepend genuinely new participants to the existing list rather than
+            // replacing it. Prevents a limit-20 poll from truncating a larger
+            // server-rendered list, while still surfacing new arrivals immediately.
+            const polled = payload.recentParticipants || [];
+            const currentCodes = new Set((state.recentParticipants || []).map(function (p) { return p.code; }));
+            const trulyNew = polled.filter(function (p) { return !currentCodes.has(p.code); });
+            const mergedParticipants = trulyNew.length > 0
+                ? trulyNew.concat(state.recentParticipants || [])
+                : (state.recentParticipants || []);
+
+            applyServerState({
+                totalPre: payload.totalPre,
+                totalPost: payload.totalPost,
+                cardsIssued: payload.cardsIssued,
+                participants: payload.participants,
+                recentParticipants: mergedParticipants,
+            });
         } catch (error) {
             console.error("Live dashboard refresh failed", error);
         }
