@@ -32,7 +32,7 @@ class BaseConfig:
     WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
     WEBHOOK_RATE_LIMIT = os.getenv("WEBHOOK_RATE_LIMIT", "30 per minute")
     SHEETS_ALLOW_EMPTY = os.getenv("SHEETS_ALLOW_EMPTY", "false").lower() == "true"
-    PUBLIC_SIGNUP_ENABLED = os.getenv("PUBLIC_SIGNUP_ENABLED", "true").lower() in (
+    PUBLIC_SIGNUP_ENABLED = os.getenv("PUBLIC_SIGNUP_ENABLED", "false").lower() in (
         "1",
         "true",
         "yes",
@@ -84,6 +84,10 @@ class ProductionConfig(BaseConfig):
         app.config["SQLALCHEMY_DATABASE_URI"] = uri
 
         if app.config.get("SECRET_KEY") == DEFAULT_SECRET_KEY:
+            app.logger.error(
+                "SECURITY: SECRET_KEY is using the default value in production. "
+                "Set SECRET_KEY in the environment immediately."
+            )
             warnings.warn(
                 "SECRET_KEY is using the default value in production.",
                 RuntimeWarning,
